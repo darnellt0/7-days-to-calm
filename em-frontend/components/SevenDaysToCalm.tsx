@@ -65,13 +65,30 @@ export default function SevenDaysToCalm() {
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8787";
     const url  = `${base}/convai/signed-url?challenge_day=${currentDay}`;
+
+    console.log("[EM] Fetching signed URL from:", url);
+    console.log("[EM] Backend base URL:", base);
+
     fetch(url)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((r) => {
+        console.log("[EM] Response status:", r.status);
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+        }
+        return r.json();
+      })
       .then((data) => {
         setSignedUrl(data.signed_url);
-        console.log("[EM] got signed url for day", currentDay);
+        console.log("[EM] ✓ Got signed URL for day", currentDay);
+        console.log("[EM] Signed URL:", data.signed_url);
       })
-      .catch((err) => console.error("[EM] signed-url error", err));
+      .catch((err) => {
+        console.error("[EM] ✗ Signed URL error:", err);
+        console.error("[EM] This is likely a CORS issue. Check:");
+        console.error("[EM] 1. NEXT_PUBLIC_BACKEND_URL is set in Vercel");
+        console.error("[EM] 2. Backend CORS allows your domain");
+        console.error("[EM] 3. Backend is deployed and running");
+      });
   }, [currentDay]);
 
   const handleDayComplete = (day: number) => {
