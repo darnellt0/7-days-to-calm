@@ -3,7 +3,8 @@ FastAPI Backend for 7 Days to Calm
 Handles ElevenLabs ConvAI integration and meditation tracking
 """
 
-# Updated CORS config for Vercel frontend - 2025-10-14T00:00:00Z
+# Updated CORS config for Vercel frontend - 2025-10-14T00:01:00Z
+# Fixed OPTIONS preflight handling by explicitly listing HTTP methods
 
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +16,8 @@ from typing import Optional
 
 app = FastAPI(title="7 Days to Calm API")
 
-# CORS Configuration
+# CRITICAL: Add CORS middleware IMMEDIATELY after creating app, BEFORE routes
+# This ensures OPTIONS preflight requests are handled correctly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -29,7 +31,7 @@ app.add_middleware(
         "https://www.7-days-to-calm.vercel.app"
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # Explicitly include OPTIONS
     allow_headers=["*"],
 )
 
