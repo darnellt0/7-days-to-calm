@@ -156,7 +156,7 @@ export default function SevenDaysToCalm() {
                 className="rounded-lg overflow-hidden relative z-10"
                 style={{ minHeight: '500px' }}
                 dangerouslySetInnerHTML={{
-                  __html: '<elevenlabs-convai agent-id="agent_4201k708pqxsed39y0vsz05gn66e"></elevenlabs-convai>'
+                  __html: '<elevenlabs-convai agent-id="agent_4201k708pqxsed39y0vsz05gn66e" variant="expanded"></elevenlabs-convai>'
                 }}
               />
             </div>
