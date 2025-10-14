@@ -1,0 +1,34 @@
+# Render Blueprint for Elevated Movements
+# Deploy backend service with this configuration
+
+services:
+  # Backend API Service
+  - type: web
+    name: elevated-movements-api
+    runtime: python
+    region: oregon
+    plan: free  # Change to 'starter' or higher for production
+    branch: main
+    rootDir: em-backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ELEVENLABS_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: ELEVENLABS_AGENT_ID
+        sync: false
+      - key: CORS_ORIGINS
+        value: http://localhost:3000,http://localhost:3001
+      - key: LOG_LEVEL
+        value: info
+      - key: ENVIRONMENT
+        value: production
+    healthCheckPath: /health
+    autoDeploy: true
+
+    # Service notifications
+    alerts:
+      - type: failure
+        target: email
