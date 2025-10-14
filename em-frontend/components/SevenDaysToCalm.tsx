@@ -48,6 +48,41 @@ export default function SevenDaysToCalm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Force ElevenLabs widget to display inline instead of as bubble
+  useEffect(() => {
+    // Wait for widget script to load
+    const initializeWidget = () => {
+      const widgetElement = document.querySelector('elevenlabs-convai');
+      if (widgetElement) {
+        // Set inline display attributes
+        widgetElement.setAttribute('variant', 'full-width');
+        widgetElement.setAttribute('display', 'inline');
+
+        // Apply inline styling to force non-bubble mode
+        const style = document.createElement('style');
+        style.innerHTML = `
+          elevenlabs-convai {
+            width: 100% !important;
+            height: 600px !important;
+            display: block !important;
+            position: relative !important;
+          }
+          /* Hide any floating bubble */
+          elevenlabs-convai::part(bubble) {
+            display: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    };
+
+    // Try to initialize immediately and after delay
+    initializeWidget();
+    const timer = setTimeout(initializeWidget, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleDayComplete = (day: number) => {
     const newDay = Math.min(day + 1, 7);
     setCurrentDay(newDay);
@@ -145,25 +180,14 @@ export default function SevenDaysToCalm() {
               <p className="text-gray-600">{dayThemes[currentDay - 1].description}</p>
             </div>
 
-            {/* Widget container */}
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 relative overflow-hidden shadow-inner">
-              {/* decorative blobs */}
-              <div className="absolute top-0 right-0 w-40 h-40 bg-blue-200 rounded-full opacity-20 blur-3xl" />
-              <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-200 rounded-full opacity-20 blur-3xl" />
-
-              {/* ElevenLabs Widget - Shria meditation guide */}
-              <div
-                className="rounded-lg relative z-10 bg-white"
-                style={{
-                  minHeight: '600px',
-                  width: '100%',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-                dangerouslySetInnerHTML={{
-                  __html: '<elevenlabs-convai agent-id="agent_4201k708pqxsed39y0vsz05gn66e" variant="full-width"></elevenlabs-convai>'
-                }}
-              />
+            {/* Shria Widget Container - Inline Meditation Guide */}
+            <div
+              id="shria-widget-container"
+              className="w-full max-w-4xl mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4 relative"
+            >
+              <elevenlabs-convai
+                agent-id="agent_4201k708pqxsed39y0vsz05gn66e"
+              ></elevenlabs-convai>
             </div>
 
             {/* Complete Day Button */}
