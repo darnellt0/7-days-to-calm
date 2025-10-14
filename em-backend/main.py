@@ -3,6 +3,8 @@ FastAPI Backend for 7 Days to Calm
 Handles ElevenLabs ConvAI integration and meditation tracking
 """
 
+# Updated CORS config for Vercel frontend - 2025-10-14T00:00:00Z
+
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -17,9 +19,14 @@ app = FastAPI(title="7 Days to Calm API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
         "http://localhost:3000",
+        "http://localhost:3001",
         "https://www.elevatedmovements.com",
-        "https://elevatedmovements.com"
+        "https://elevatedmovements.com",
+        "https://7-days-to-calm.vercel.app",
+        "https://www.7-days-to-calm.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -27,7 +34,7 @@ app.add_middleware(
 )
 
 # Environment variables
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "f6b8a3229da9c68e87305f9f58abc36c7e707e6e1386ee03427b88c0886ff4a2")
 AGENT_ID = os.getenv("AGENT_ID", "agent_4201k708pqxsed39y0vsz05gn66e")
 JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-this")
 
