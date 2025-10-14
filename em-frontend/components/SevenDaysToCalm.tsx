@@ -151,12 +151,17 @@ export default function SevenDaysToCalm() {
               <div className="absolute top-0 right-0 w-40 h-40 bg-blue-200 rounded-full opacity-20 blur-3xl" />
               <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-200 rounded-full opacity-20 blur-3xl" />
 
-              {/* ElevenLabs Widget - using dangerouslySetInnerHTML to properly render web component */}
+              {/* ElevenLabs Widget - Shria meditation guide */}
               <div
-                className="rounded-lg overflow-hidden relative z-10"
-                style={{ minHeight: '500px' }}
+                className="rounded-lg relative z-10 bg-white"
+                style={{
+                  minHeight: '600px',
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
                 dangerouslySetInnerHTML={{
-                  __html: '<elevenlabs-convai agent-id="agent_4201k708pqxsed39y0vsz05gn66e" variant="expanded" display="inline"></elevenlabs-convai>'
+                  __html: '<elevenlabs-convai agent-id="agent_4201k708pqxsed39y0vsz05gn66e" variant="full-width"></elevenlabs-convai>'
                 }}
               />
             </div>
