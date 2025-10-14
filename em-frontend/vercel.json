@@ -9,14 +9,6 @@
   "git": {
     "deploymentEnabled": true
   },
-  "env": {
-    "NEXT_PUBLIC_BACKEND_URL": "@backend-url"
-  },
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_BACKEND_URL": "@backend-url"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
