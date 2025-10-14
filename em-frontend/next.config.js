@@ -8,11 +8,9 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
-            // let the page use the microphone (unblocks getUserMedia)
+            // Allow microphone access for the page and ElevenLabs widget
             key: 'Permissions-Policy',
-            value: 'microphone=(self)',
-            // If you prefer to be explicit, you can use:
-            // value: 'microphone=(self "https://elevenlabs.io" "https://api.elevenlabs.io")'
+            value: 'microphone=*',
           },
         ],
       },
