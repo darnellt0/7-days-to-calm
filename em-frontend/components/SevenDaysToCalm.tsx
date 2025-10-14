@@ -187,6 +187,7 @@ export default function SevenDaysToCalm() {
             >
               <elevenlabs-convai
                 agent-id="agent_4201k708pqxsed39y0vsz05gn66e"
+                api-key={process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY}
               ></elevenlabs-convai>
             </div>
 
