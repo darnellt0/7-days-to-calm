@@ -48,39 +48,36 @@ export default function SevenDaysToCalm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Force ElevenLabs widget to display inline instead of as bubble
+  // Widget diagnostics and initialization
   useEffect(() => {
-    // Wait for widget script to load
-    const initializeWidget = () => {
-      const widgetElement = document.querySelector('elevenlabs-convai');
-      if (widgetElement) {
-        // Set inline display attributes
-        widgetElement.setAttribute('variant', 'full-width');
-        widgetElement.setAttribute('display', 'inline');
+    console.log('[EM] Widget mount - checking for elevenlabs-convai element');
 
-        // Apply inline styling to force non-bubble mode
-        const style = document.createElement('style');
-        style.innerHTML = `
-          elevenlabs-convai {
-            width: 100% !important;
-            height: 600px !important;
-            display: block !important;
-            position: relative !important;
-          }
-          /* Hide any floating bubble */
-          elevenlabs-convai::part(bubble) {
-            display: none !important;
-          }
-        `;
-        document.head.appendChild(style);
+    const checkWidget = () => {
+      const widgetElement = document.querySelector('elevenlabs-convai');
+      const scriptTag = document.querySelector('script[src*="elevenlabs"]');
+
+      console.log('[EM] Script tag present:', !!scriptTag);
+      console.log('[EM] Widget element:', widgetElement);
+      console.log('[EM] Widget shadowRoot:', widgetElement?.shadowRoot);
+
+      if (widgetElement && widgetElement.shadowRoot) {
+        console.log('[EM] ✓ Widget successfully initialized with shadowRoot');
+      } else if (widgetElement && !widgetElement.shadowRoot) {
+        console.log('[EM] ⚠️  Widget element exists but no shadowRoot yet - may still be loading');
+      } else {
+        console.log('[EM] ✗ Widget element not found - script may not have loaded');
       }
     };
 
-    // Try to initialize immediately and after delay
-    initializeWidget();
-    const timer = setTimeout(initializeWidget, 1000);
+    // Check immediately, after 1s, and after 3s
+    checkWidget();
+    const timer1 = setTimeout(checkWidget, 1000);
+    const timer2 = setTimeout(checkWidget, 3000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, []);
 
   const handleDayComplete = (day: number) => {
@@ -183,12 +180,28 @@ export default function SevenDaysToCalm() {
             {/* Shria Widget Container - Inline Meditation Guide */}
             <div
               id="shria-widget-container"
-              className="w-full max-w-4xl mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4 relative"
+              className="w-full mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4 relative"
+              style={{ maxWidth: '100%' }}
             >
               <elevenlabs-convai
                 agent-id="agent_4201k708pqxsed39y0vsz05gn66e"
-                api-key={process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY}
+                variant="full-width"
               ></elevenlabs-convai>
+
+              {/* Fallback message if widget doesn't load */}
+              <div
+                id="widget-fallback"
+                className="text-center p-8 text-gray-600"
+                style={{ display: 'none' }}
+              >
+                <p className="mb-4 font-semibold">Widget Loading...</p>
+                <p className="text-sm">If the meditation guide doesn't appear:</p>
+                <ul className="text-sm text-left inline-block mt-2 space-y-1">
+                  <li>✓ Refresh the page (Ctrl+Shift+R)</li>
+                  <li>✓ Check browser console for errors</li>
+                  <li>✓ Ensure agent is publicly accessible</li>
+                </ul>
+              </div>
             </div>
 
             {/* Complete Day Button */}
