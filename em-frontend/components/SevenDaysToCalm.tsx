@@ -28,7 +28,6 @@ interface DayProgress {
 export default function SevenDaysToCalm() {
   const [currentDay, setCurrentDay] = useState<number>(1);
   const [progress, setProgress] = useState<DayProgress[]>([]);
-  const [signedUrl, setSignedUrl] = useState<string>("");
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
@@ -60,36 +59,6 @@ export default function SevenDaysToCalm() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Fetch a signed URL whenever the day changes
-  useEffect(() => {
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8787";
-    const url  = `${base}/convai/signed-url?challenge_day=${currentDay}`;
-
-    console.log("[EM] Fetching signed URL from:", url);
-    console.log("[EM] Backend base URL:", base);
-
-    fetch(url)
-      .then((r) => {
-        console.log("[EM] Response status:", r.status);
-        if (!r.ok) {
-          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-        }
-        return r.json();
-      })
-      .then((data) => {
-        setSignedUrl(data.signed_url);
-        console.log("[EM] ✓ Got signed URL for day", currentDay);
-        console.log("[EM] Signed URL:", data.signed_url);
-      })
-      .catch((err) => {
-        console.error("[EM] ✗ Signed URL error:", err);
-        console.error("[EM] This is likely a CORS issue. Check:");
-        console.error("[EM] 1. NEXT_PUBLIC_BACKEND_URL is set in Vercel");
-        console.error("[EM] 2. Backend CORS allows your domain");
-        console.error("[EM] 3. Backend is deployed and running");
-      });
-  }, [currentDay]);
 
   const handleDayComplete = (day: number) => {
     const newDay = Math.min(day + 1, 7);
@@ -179,13 +148,12 @@ export default function SevenDaysToCalm() {
               <p className="text-gray-600">{dayThemes[currentDay - 1].description}</p>
             </div>
 
-            {/* ElevenLabs Widget (authorized via signed URL) */}
+            {/* ElevenLabs Widget (direct agent-id connection) */}
             <div className="w-full mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4">
-              {signedUrl ? (
-                <elevenlabs-convai signed-url={signedUrl} variant="full-width"></elevenlabs-convai>
-              ) : (
-                <div className="text-center text-gray-500">Loading guide…</div>
-              )}
+              <elevenlabs-convai
+                agent-id="agent_4201k708pqxsed39y0vsz05gn66e"
+                variant="full-width"
+              ></elevenlabs-convai>
             </div>
 
             {/* Complete Day Button */}
