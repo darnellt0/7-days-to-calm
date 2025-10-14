@@ -1,7 +1,23 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Script from "next/script";
+
+// Allow the custom element in TSX
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      "elevenlabs-convai": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          "agent-id"?: string;
+          "signed-url"?: string;
+          variant?: string;
+        },
+        HTMLElement
+      >;
+    }
+  }
+}
 
 interface DayProgress {
   day: number;
@@ -12,73 +28,51 @@ interface DayProgress {
 export default function SevenDaysToCalm() {
   const [currentDay, setCurrentDay] = useState<number>(1);
   const [progress, setProgress] = useState<DayProgress[]>([]);
+  const [signedUrl, setSignedUrl] = useState<string>("");
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
   const dayThemes = [
-    { day: 1, title: "Arrive", description: "2-min quick reset, breath + sound" },
-    { day: 2, title: "Longer Exhale", description: "In 4 / Out 6, downshift" },
-    { day: 3, title: "Body Scan", description: "Head to feet, release tension" },
+    { day: 1, title: "Arrive",         description: "2-min quick reset, breath + sound" },
+    { day: 2, title: "Longer Exhale",  description: "In 4 / Out 6, downshift" },
+    { day: 3, title: "Body Scan",      description: "Head to feet, release tension" },
     { day: 4, title: "Label Thoughts", description: "Notice thinking, return to breath" },
-    { day: 5, title: "Box Breathing", description: "4-4-4-4, find steadiness" },
+    { day: 5, title: "Box Breathing",  description: "4-4-4-4, find steadiness" },
     { day: 6, title: "Open Awareness", description: "Sounds, touch, breath" },
-    { day: 7, title: "Integration", description: "Choose your favorite practice" },
+    { day: 7, title: "Integration",    description: "Choose your favorite practice" },
   ];
 
+  // Initial progress from localStorage
   useEffect(() => {
-    // Load progress from localStorage
     const savedDayStr = localStorage.getItem("em_challenge_day");
-    const savedStart = localStorage.getItem("em_challenge_start");
-    const savedDay = Math.min(Math.max(parseInt(savedDayStr || "1", 10) || 1, 1), 7);
+    const savedStart  = localStorage.getItem("em_challenge_start");
+    const savedDay    = Math.min(Math.max(parseInt(savedDayStr || "1", 10) || 1, 1), 7);
 
     setCurrentDay(savedDay);
+    if (!savedStart) localStorage.setItem("em_challenge_start", new Date().toISOString());
 
-    if (!savedStart) {
-      localStorage.setItem("em_challenge_start", new Date().toISOString());
-    }
-
-    // Initialize progress using the saved day (not stale state)
     setProgress(
-      dayThemes.map((theme) => ({
-        day: theme.day,
-        unlocked: theme.day <= savedDay,
-        completed: theme.day < savedDay,
+      dayThemes.map((t) => ({
+        day: t.day,
+        unlocked: t.day <= savedDay,
+        completed: t.day < savedDay,
       }))
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Widget diagnostics and initialization
+  // Fetch a signed URL whenever the day changes
   useEffect(() => {
-    console.log('[EM] Widget mount - checking for elevenlabs-convai element');
-
-    const checkWidget = () => {
-      const widgetElement = document.querySelector('elevenlabs-convai');
-      const scriptTag = document.querySelector('script[src*="elevenlabs"]');
-
-      console.log('[EM] Script tag present:', !!scriptTag);
-      console.log('[EM] Widget element:', widgetElement);
-      console.log('[EM] Widget shadowRoot:', widgetElement?.shadowRoot);
-
-      if (widgetElement && widgetElement.shadowRoot) {
-        console.log('[EM] ✓ Widget successfully initialized with shadowRoot');
-      } else if (widgetElement && !widgetElement.shadowRoot) {
-        console.log('[EM] ⚠️  Widget element exists but no shadowRoot yet - may still be loading');
-      } else {
-        console.log('[EM] ✗ Widget element not found - script may not have loaded');
-      }
-    };
-
-    // Check immediately, after 1s, and after 3s
-    checkWidget();
-    const timer1 = setTimeout(checkWidget, 1000);
-    const timer2 = setTimeout(checkWidget, 3000);
-
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
-  }, []);
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8787";
+    const url  = `${base}/convai/signed-url?challenge_day=${currentDay}`;
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        setSignedUrl(data.signed_url);
+        console.log("[EM] got signed url for day", currentDay);
+      })
+      .catch((err) => console.error("[EM] signed-url error", err));
+  }, [currentDay]);
 
   const handleDayComplete = (day: number) => {
     const newDay = Math.min(day + 1, 7);
@@ -93,7 +87,6 @@ export default function SevenDaysToCalm() {
       }))
     );
 
-    // GTM
     (window as any).dataLayer = (window as any).dataLayer || [];
     (window as any).dataLayer.push({ event: "em_day_unlocked", day, next_day: newDay });
   };
@@ -102,13 +95,7 @@ export default function SevenDaysToCalm() {
     localStorage.removeItem("em_challenge_day");
     localStorage.removeItem("em_challenge_start");
     setCurrentDay(1);
-    setProgress(
-      dayThemes.map((t) => ({
-        day: t.day,
-        unlocked: t.day === 1,
-        completed: false,
-      }))
-    );
+    setProgress(dayThemes.map((t) => ({ day: t.day, unlocked: t.day === 1, completed: false })));
     setShowResetDialog(false);
     setShowToast(true);
 
@@ -120,12 +107,10 @@ export default function SevenDaysToCalm() {
 
   return (
     <>
-      {/* Load the official ElevenLabs widget script */}
+      {/* Load the official widget once */}
       <Script
-        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+        src="https://elevenlabs.io/convai-widget/index.js"
         strategy="afterInteractive"
-        async
-        type="text/javascript"
       />
 
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-8">
@@ -177,31 +162,13 @@ export default function SevenDaysToCalm() {
               <p className="text-gray-600">{dayThemes[currentDay - 1].description}</p>
             </div>
 
-            {/* Shria Widget Container - Inline Meditation Guide */}
-            <div
-              id="shria-widget-container"
-              className="w-full mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4 relative"
-              style={{ maxWidth: '100%' }}
-            >
-              <elevenlabs-convai
-                agent-id="agent_4201k708pqxsed39y0vsz05gn66e"
-                variant="full-width"
-              ></elevenlabs-convai>
-
-              {/* Fallback message if widget doesn't load */}
-              <div
-                id="widget-fallback"
-                className="text-center p-8 text-gray-600"
-                style={{ display: 'none' }}
-              >
-                <p className="mb-4 font-semibold">Widget Loading...</p>
-                <p className="text-sm">If the meditation guide doesn't appear:</p>
-                <ul className="text-sm text-left inline-block mt-2 space-y-1">
-                  <li>✓ Refresh the page (Ctrl+Shift+R)</li>
-                  <li>✓ Check browser console for errors</li>
-                  <li>✓ Ensure agent is publicly accessible</li>
-                </ul>
-              </div>
+            {/* ElevenLabs Widget (authorized via signed URL) */}
+            <div className="w-full mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4">
+              {signedUrl ? (
+                <elevenlabs-convai signed-url={signedUrl} variant="full-width"></elevenlabs-convai>
+              ) : (
+                <div className="text-center text-gray-500">Loading guide…</div>
+              )}
             </div>
 
             {/* Complete Day Button */}
@@ -215,7 +182,7 @@ export default function SevenDaysToCalm() {
             </div>
           </div>
 
-          {/* Small helpers */}
+          {/* Helpers */}
           <div className="text-center text-gray-600 text-sm mb-6">
             <p>Complete each day's practice to unlock the next session</p>
           </div>
@@ -231,14 +198,13 @@ export default function SevenDaysToCalm() {
         </div>
       </div>
 
-      {/* Reset Confirmation Dialog */}
+      {/* Reset Dialog */}
       {showResetDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-3">Reset Progress?</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to reset your progress? This will take you back to Day 1 and clear all
-              your completion data.
+              Are you sure you want to reset your progress? This will take you back to Day 1 and clear all your completion data.
             </p>
             <div className="flex gap-3 justify-end">
               <button
@@ -258,9 +224,9 @@ export default function SevenDaysToCalm() {
         </div>
       )}
 
-      {/* Toast Notification */}
+      {/* Toast */}
       {showToast && (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
