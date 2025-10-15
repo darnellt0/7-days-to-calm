@@ -373,25 +373,35 @@ export default function SevenDaysToCalm() {
             </div>
 
             {/* Widget container */}
-            <div className="w-full mx-auto my-4 min-h-[600px] bg-white rounded-lg shadow-lg p-4 relative">
+            <div
+              id="shria-widget-container"
+              className="w-full max-w-4xl mx-auto my-8"
+              style={{
+                display: "block",
+                visibility: "visible",
+                height: "600px",
+                minHeight: "600px",
+                overflow: "visible",
+              }}
+            >
               {canRenderWidget ? (
-                <elevenlabs-convai
-                  key={signedUrl}
-                  ref={attachConvaiElement}
-                  id="em-shria"
-                  signed-url={signedUrl}
-                  variant="full-width"
-                  dynamic-variables={JSON.stringify({ challenge_day: currentDay })}
-                  override-first-message={`Welcome to Day ${currentDay}: ${dayThemes[currentDay - 1].title}. How much time would you like? 2, 5, or 8 minutes?`}
-                  action-text="Start today's practice"
-                  start-call-text="Begin"
-                  end-call-text="End"
-                  expand-text="Open Shria"
-                  listening-text="listening..."
-                  speaking-text="speaking..."
-                  avatar-orb-color-1="#176161"
-                  avatar-orb-color-2="#e0cd67"
-                ></elevenlabs-convai>
+                React.createElement("elevenlabs-convai", {
+                  key: signedUrl,
+                  ref: attachConvaiElement as unknown as React.Ref<HTMLElement>,
+                  id: "em-shria",
+                  "signed-url": signedUrl,
+                  variant: "full-width",
+                  "dynamic-variables": JSON.stringify({ challenge_day: currentDay }),
+                  "override-first-message": `Welcome to Day ${currentDay}: ${dayThemes[currentDay - 1].title}. How much time would you like? 2, 5, or 8 minutes?`,
+                  "action-text": "Start today's practice",
+                  "start-call-text": "Begin",
+                  "end-call-text": "End",
+                  "expand-text": "Open Shria",
+                  "listening-text": "listening...",
+                  "speaking-text": "speaking...",
+                  "avatar-orb-color-1": "#176161",
+                  "avatar-orb-color-2": "#e0cd67",
+                })
               ) : (
                 <div className="text-center text-gray-500">
                   <p>{widgetStatusMessage}</p>
