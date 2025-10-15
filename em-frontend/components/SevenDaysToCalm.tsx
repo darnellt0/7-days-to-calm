@@ -11,6 +11,7 @@ declare global {
         React.HTMLAttributes<HTMLElement> & {
           id?: string;
           "signed-url"?: string;
+          "agent-id"?: string;
           variant?: string;
           "dynamic-variables"?: string;
           "override-first-message"?: string;
@@ -137,6 +138,17 @@ export default function SevenDaysToCalm() {
       cancelled = true;
     };
   }, [scriptLoaded, widgetReady]);
+
+  useEffect(() => {
+    if (!widgetReady) return;
+    const widget = document.querySelector<HTMLElement>("elevenlabs-convai");
+    if (widget) {
+      widget.style.display = "block";
+      widget.style.width = "100%";
+      widget.style.height = "600px";
+      widget.style.minHeight = "600px";
+    }
+  }, [widgetReady, signedUrl]);
 
   // Load saved progress once
   useEffect(() => {
@@ -390,7 +402,14 @@ export default function SevenDaysToCalm() {
                   ref: attachConvaiElement as unknown as React.Ref<HTMLElement>,
                   id: "em-shria",
                   "signed-url": signedUrl,
+                  "agent-id": "agent_4201k708pqxsed39y0vsz05gn66e",
                   variant: "full-width",
+                  style: {
+                    display: "block",
+                    width: "100%",
+                    height: "600px",
+                    minHeight: "600px",
+                  },
                   "dynamic-variables": JSON.stringify({ challenge_day: currentDay }),
                   "override-first-message": `Welcome to Day ${currentDay}: ${dayThemes[currentDay - 1].title}. How much time would you like? 2, 5, or 8 minutes?`,
                   "action-text": "Start today's practice",
