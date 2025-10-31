@@ -10,9 +10,13 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import quote
 
+from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load environment variables from .env file
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("em-backend")
@@ -25,7 +29,11 @@ ALLOW_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3001",
+    "http://localhost:3003",
+    "http://127.0.0.1:3003",
     "https://7-days-to-calm.vercel.app",
+    "https://7dtc.elevatedmovements.com",
+    "https://7-days-to-calm.elevatedmovements.com",
     "https://elevatedmovements.com",
     "https://www.elevatedmovements.com",
 ]
