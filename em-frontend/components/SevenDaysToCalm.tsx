@@ -48,6 +48,7 @@ export default function SevenDaysToCalm() {
   const [scriptFailed, setScriptFailed] = useState(false);
   const [widgetReady, setWidgetReady] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
   const dayThemes = useMemo(
@@ -80,6 +81,19 @@ export default function SevenDaysToCalm() {
     (value: number) => Math.min(Math.max(value, 1), dayThemes.length),
     [dayThemes.length]
   );
+
+  const computeTodayDay = useCallback(() => {
+    const startStr = localStorage.getItem("em_challenge_start");
+    if (!startStr) return 1;
+    try {
+      const start = new Date(startStr);
+      const now = new Date();
+      const daysDiff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      return clampDay(daysDiff + 1);
+    } catch {
+      return 1;
+    }
+  }, [clampDay]);
 
   const pushDL = useCallback((event: string, payload: Record<string, unknown> = {}) => {
     (window as any).dataLayer = (window as any).dataLayer || [];
@@ -198,11 +212,20 @@ export default function SevenDaysToCalm() {
     const el = convaiRef.current;
     if (!el) return;
     const safeDay = clampDay(currentDay);
-    el.setAttribute("dynamic-variables", JSON.stringify({ challenge_day: safeDay }));
+    // Expanded dynamic variables for immediate tailoring
+    const dyn = {
+      challenge_day: safeDay,
+      time_available: null,      // 2 | 5 | 8 | null
+      energy: null,              // "wired"|"tired"|"scattered"|"anxious"|null
+      environment: null,         // "desk"|"commute"|"bed"|null
+      intent: null               // "sleep"|"pre-meeting"|null
+    };
+    el.setAttribute("dynamic-variables", JSON.stringify(dyn));
     const title = dayThemes[safeDay - 1]?.title ?? "Calm";
+    // Softer, invitational first message (tone aligned with Shria coach)
     el.setAttribute(
       "override-first-message",
-      `Welcome to Day ${safeDay}: ${title}. How much time would you like? 2, 5, or 8 minutes?`
+      `Hey, you made it. Day ${safeDay} — ${title}. Would 2, 5, or 8 minutes feel good right now?`
     );
   }, [clampDay, currentDay, dayThemes]);
 
@@ -242,6 +265,26 @@ export default function SevenDaysToCalm() {
     setTimeout(() => setShowToast(false), 3000);
   }, [pushDL, setChallengeDayAndPersist]);
 
+  const handleSkipToTodayConfirm = useCallback(() => {
+    const currentDay = dayRef.current;
+    const today = computeTodayDay();
+    setChallengeDayAndPersist(today);
+    setShowSkipDialog(false);
+    setShowToast(true);
+    pushDL("em_jump_to_today", { from: currentDay, to: today, confirmed: true });
+    setTimeout(() => setShowToast(false), 3000);
+  }, [pushDL, setChallengeDayAndPersist, computeTodayDay]);
+
+  const handleSkipTodayClick = useCallback(() => {
+    const current = dayRef.current;
+    const today = computeTodayDay();
+    if (today > current) {
+      setShowSkipDialog(true);
+    } else {
+      pushDL("em_jump_to_today", { from: current, to: current, confirmed: false });
+    }
+  }, [pushDL, computeTodayDay]);
+
   useEffect(() => {
     const handleReady = () => console.log("[EM] widget ready");
     window.addEventListener("elevenlabs-convai-ready", handleReady as EventListener);
@@ -268,10 +311,19 @@ export default function SevenDaysToCalm() {
       const applyAttributes = (dayValue: number) => {
         const safeDay = clampDay(dayValue);
         const title = dayThemes[safeDay - 1]?.title ?? "Calm";
-        node.setAttribute("dynamic-variables", JSON.stringify({ challenge_day: safeDay }));
+        // Expanded dynamic variables for immediate tailoring
+        const dyn = {
+          challenge_day: safeDay,
+          time_available: null,      // 2 | 5 | 8 | null
+          energy: null,              // "wired"|"tired"|"scattered"|"anxious"|null
+          environment: null,         // "desk"|"commute"|"bed"|null
+          intent: null               // "sleep"|"pre-meeting"|null
+        };
+        node.setAttribute("dynamic-variables", JSON.stringify(dyn));
+        // Softer, invitational first message (tone aligned with Shria coach)
         node.setAttribute(
           "override-first-message",
-          `Welcome to Day ${safeDay}: ${title}. How much time would you like? 2, 5, or 8 minutes?`
+          `Hey, you made it. Day ${safeDay} — ${title}. Would 2, 5, or 8 minutes feel good right now?`
         );
       };
 
@@ -284,23 +336,47 @@ export default function SevenDaysToCalm() {
             setChallengeDay: ({ day }: { day: number }) => {
               const next = setChallengeDayAndPersist(day);
               pushDL("em_day_unlocked", { day: next });
-              return { day: next };
+              return { ok: true, day: next };
             },
             trackEvent: ({ name, payload }: { name?: string; payload?: Record<string, unknown> }) => {
-              if (name) pushDL(name, payload || {});
+              pushDL(name || "em_custom", payload || {});
+              return { ok: true };
             },
             openLink: ({ url }: { url?: string }) => {
-              if (!url) return;
               try {
-                window.open(url, "_blank", "noopener,noreferrer");
+                if (url) window.open(url, "_blank", "noopener,noreferrer");
               } catch (err) {
                 console.error("[EM] openLink failed", err);
               }
+              return { ok: true };
             },
             getChallengeDay: () => ({ day: dayRef.current }),
+            setReminder: ({ time, label }: { time?: string; label?: string }) => {
+              try {
+                localStorage.setItem("em_reminder", JSON.stringify({ time, label }));
+                pushDL("em_reminder_set", { time, label });
+                return { ok: true };
+              } catch (err) {
+                pushDL("em_reminder_error", { message: String(err) });
+                return { ok: false, error: String(err) };
+              }
+            },
           };
         }
-        pushDL("em_convai_started", { day: dayRef.current });
+
+        // Start event with richer context (if dyn vars were set earlier)
+        let dyn: Record<string, unknown> = {};
+        try {
+          const dynStr = convaiRef.current?.getAttribute("dynamic-variables");
+          if (dynStr) dyn = JSON.parse(dynStr);
+        } catch (err) {
+          console.error("[EM] Failed to parse dynamic-variables", err);
+        }
+        pushDL("em_convai_started", {
+          day: dayRef.current,
+          time_available: dyn.time_available || null,
+          intent: dyn.intent || null,
+        });
       };
 
       const handleHangup: EventListener = () => pushDL("em_convai_ended", { day: dayRef.current });
@@ -410,8 +486,14 @@ export default function SevenDaysToCalm() {
                     height: "600px",
                     minHeight: "600px",
                   },
-                  "dynamic-variables": JSON.stringify({ challenge_day: currentDay }),
-                  "override-first-message": `Welcome to Day ${currentDay}: ${dayThemes[currentDay - 1].title}. How much time would you like? 2, 5, or 8 minutes?`,
+                  "dynamic-variables": JSON.stringify({
+                    challenge_day: currentDay,
+                    time_available: null,
+                    energy: null,
+                    environment: null,
+                    intent: null,
+                  }),
+                  "override-first-message": `Hey, you made it. Day ${currentDay} — ${dayThemes[currentDay - 1].title}. Would 2, 5, or 8 minutes feel good right now?`,
                   "action-text": "Start today's practice",
                   "start-call-text": "Begin",
                   "end-call-text": "End",
@@ -438,23 +520,30 @@ export default function SevenDaysToCalm() {
               </div>
             )}
 
-            <div className="mt-6 text-center">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-3">
+              <button
+                onClick={() => setShowResetDialog(true)}
+                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                aria-label="Reset to Day 1"
+              >
+                Reset to Day 1
+              </button>
+              <button
+                onClick={handleSkipTodayClick}
+                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                aria-label="Skip to Today"
+              >
+                Skip to Today
+              </button>
               <button
                 onClick={() => handleDayComplete(currentDay)}
                 className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                aria-label="Continue today's practice"
+                id="em-continue-day"
               >
-                Complete Day {currentDay}
+                Continue Day {currentDay}
               </button>
             </div>
-          </div>
-
-          <div className="text-center">
-            <button
-              onClick={() => setShowResetDialog(true)}
-              className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline"
-            >
-              Start Over
-            </button>
           </div>
         </div>
       </div>
@@ -480,6 +569,32 @@ export default function SevenDaysToCalm() {
                 className="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors font-medium"
               >
                 Reset Progress
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Skip to Today Dialog */}
+      {showSkipDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-3">Jump to Today?</h3>
+            <p className="text-gray-600 mb-6">
+              You're currently on Day {dayRef.current}. Skip to Day {computeTodayDay()}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowSkipDialog(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSkipToTodayConfirm}
+                className="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                Skip to Day {computeTodayDay()}
               </button>
             </div>
           </div>
