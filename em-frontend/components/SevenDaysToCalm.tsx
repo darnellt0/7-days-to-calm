@@ -548,6 +548,103 @@ export default function SevenDaysToCalm() {
         </div>
       </div>
 
+      {/* Day 7 Upsell Banner — shown when user reaches Day 7 */}
+      {currentDay === 7 && (
+        <div className="mt-8 mx-auto max-w-2xl">
+          <div
+            style={{
+              background: "linear-gradient(135deg, #36013f 0%, #176161 100%)",
+              borderRadius: "20px",
+              padding: "32px",
+              textAlign: "center",
+              color: "#fff",
+              boxShadow: "0 8px 40px rgba(54,1,63,0.25)",
+            }}
+          >
+            <div
+              style={{
+                display: "inline-block",
+                background: "linear-gradient(135deg, #e0cd67, #c3b4b3)",
+                color: "#0b0f10",
+                fontWeight: 700,
+                borderRadius: "999px",
+                padding: "6px 16px",
+                fontSize: "12px",
+                letterSpacing: "0.08em",
+                marginBottom: "16px",
+              }}
+            >
+              🎉 You completed the 7-Day Reset
+            </div>
+            <h2
+              style={{
+                fontFamily: "Georgia, serif",
+                fontSize: "clamp(22px, 3vw, 30px)",
+                fontWeight: 700,
+                marginBottom: "12px",
+                color: "#e0cd67",
+              }}
+            >
+              The MenoPause Reset — Full App
+            </h2>
+            <p
+              style={{
+                fontSize: "15px",
+                opacity: 0.9,
+                marginBottom: "24px",
+                lineHeight: 1.6,
+                maxWidth: "480px",
+                margin: "0 auto 24px",
+              }}
+            >
+              You&apos;ve been breathing with intention. Now go deeper. The full app includes guided daily practices, a reflection journal, and ongoing support — all in one sacred space.
+            </p>
+            <a
+              href="https://menopauseapp-raf6f8ae.manus.space"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                background: "#e0cd67",
+                color: "#36013f",
+                fontWeight: 700,
+                borderRadius: "12px",
+                padding: "14px 28px",
+                fontSize: "15px",
+                textDecoration: "none",
+                marginBottom: "12px",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+              }}
+            >
+              Start Day 1 — $19 Founding Access ↗
+            </a>
+            <p
+              style={{
+                fontSize: "12px",
+                opacity: 0.7,
+                marginTop: "8px",
+              }}
+            >
+              24-hour founding member offer · Use code <strong>RESET50</strong> for 50% off
+            </p>
+            <a
+              href="https://menopauseapp-raf6f8ae.manus.space"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "block",
+                marginTop: "12px",
+                fontSize: "13px",
+                color: "#c3b4b3",
+                textDecoration: "underline",
+              }}
+            >
+              Already a member? Sign in →
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* Reset Dialog */}
       {showResetDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
