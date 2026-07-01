@@ -3,17 +3,13 @@ const nextConfig = {
   reactStrictMode: true,
 
   async headers() {
-    // NOTE: Permissions-Policy must list explicit origins (quotes required).
-    const devOrigins = `"http://localhost:3000" "http://127.0.0.1:3000"`;
-    const prodOrigins = `"https://7-days-to-calm.vercel.app" "https://elevatedmovements.com" "https://www.elevatedmovements.com"`;
+    // Production headers come from em-frontend/vercel.json (microphone=*).
+    // Keep local dev identical so the ElevenLabs widget's mic access behaves
+    // the same in both environments — an origin-scoped value broke it before.
     return [
       {
         source: "/:path*",
-        headers: [
-          { key: "Permissions-Policy", value: `microphone=(self ${devOrigins} ${prodOrigins})` },
-          // If you need autoplay too, add another header:
-          // { key: "Permissions-Policy", value: `autoplay=(self ${devOrigins} ${prodOrigins})` },
-        ],
+        headers: [{ key: "Permissions-Policy", value: "microphone=*" }],
       },
     ];
   },

@@ -20,7 +20,7 @@ services:
       - key: ELEVENLABS_AGENT_ID
         sync: false
       - key: CORS_ORIGINS
-        value: http://localhost:3000,http://localhost:3001
+        value: https://7-days-to-calm.vercel.app,https://7dtc.elevatedmovements.com,https://elevatedmovements.com,https://www.elevatedmovements.com
       - key: LOG_LEVEL
         value: info
       - key: ENVIRONMENT

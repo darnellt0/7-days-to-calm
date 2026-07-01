@@ -49,7 +49,8 @@ Guided mindfulness challenge powered by the ElevenLabs Conversational AI widget.
 **Backend (`em-backend/.env`)**
 ```
 ELEVENLABS_API_KEY=your_elevenlabs_api_key
-AGENT_ID=agent_4201k708pqxsed39y0vsz05gn66e
+AGENT_ID=agent_4201k708pqxsed39y0vsz05gn66e   # ELEVENLABS_AGENT_ID also accepted
+CORS_ORIGINS=optional,comma-separated,extra,origins
 JWT_SECRET=optional-if-needed
 TOOL_BEARER_TOKEN=optional
 ```
