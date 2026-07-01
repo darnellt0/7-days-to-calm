@@ -36,12 +36,17 @@ interface DayProgress {
   completed: boolean;
 }
 
+// ElevenLabs signed URLs are valid for ~15 minutes. Refresh well before
+// expiry, and treat anything older than the max age as unusable.
+const SIGNED_URL_REFRESH_MS = 8 * 60 * 1000;
+const SIGNED_URL_MAX_AGE_MS = 14 * 60 * 1000;
+
 export default function SevenDaysToCalm() {
   const convaiRef = useRef<HTMLElement | null>(null);
   const convaiListenersRef = useRef<{ call: EventListener; hangup: EventListener } | null>(null);
   const dayRef = useRef<number>(1);
   const [currentDay, setCurrentDay] = useState<number>(1);
-  const [progress, setProgress] = useState<DayProgress[]>([]);
+  const [challengeComplete, setChallengeComplete] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string>("");
   const [signedUrlError, setSignedUrlError] = useState<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -122,16 +127,19 @@ export default function SevenDaysToCalm() {
     (value: number) => {
       const next = clampDay(value);
       setCurrentDay(next);
-      setProgress(
-        dayThemes.map((t) => ({
-          day: t.day,
-          unlocked: t.day <= next,
-          completed: t.day < next,
-        }))
-      );
       return next;
     },
-    [clampDay, dayThemes]
+    [clampDay]
+  );
+
+  const progress = useMemo<DayProgress[]>(
+    () =>
+      dayThemes.map((t) => ({
+        day: t.day,
+        unlocked: t.day <= currentDay,
+        completed: challengeComplete || t.day < currentDay,
+      })),
+    [challengeComplete, currentDay, dayThemes]
   );
 
   const setChallengeDayAndPersist = useCallback(
@@ -188,6 +196,7 @@ export default function SevenDaysToCalm() {
     const savedStart = localStorage.getItem("em_challenge_start");
     const savedDay = savedDayStr ? parseInt(savedDayStr, 10) : 1;
     setChallengeDayAndPersist(Number.isNaN(savedDay) ? 1 : savedDay);
+    setChallengeComplete(localStorage.getItem("em_challenge_complete") === "1");
     if (!savedStart) localStorage.setItem("em_challenge_start", new Date().toISOString());
   }, [setChallengeDayAndPersist]);
 
@@ -229,11 +238,15 @@ export default function SevenDaysToCalm() {
           console.warn(`[EM] signed-url attempt ${attempt + 1} failed`, err);
           if (attempt === RETRY_DELAYS_MS.length) {
             setColdStart(false);
-            if (signedUrlRef.current) {
-              // Keep the previous URL rather than tearing down a working widget.
-              console.warn("[EM] keeping previous signed URL after refresh failure");
+            const age = Date.now() - lastSignedUrlAtRef.current;
+            if (signedUrlRef.current && age < SIGNED_URL_MAX_AGE_MS) {
+              // The previous URL is still inside its validity window — keep
+              // the widget up; the staleness check will retry the refresh.
+              console.warn("[EM] keeping still-valid signed URL after refresh failure");
               return;
             }
+            signedUrlRef.current = "";
+            lastSignedUrlAtRef.current = 0;
             setSignedUrl("");
             const message = err instanceof Error ? err.message : "Unknown signed-url error";
             setSignedUrlError(message);
@@ -256,11 +269,10 @@ export default function SevenDaysToCalm() {
   // Signed URLs expire after ~15 minutes. Refresh a stale one in the
   // background (never mid-call) so a tab left open still connects.
   useEffect(() => {
-    const STALE_MS = 8 * 60 * 1000;
     const maybeRefresh = () => {
       if (inCallRef.current) return;
       if (!lastSignedUrlAtRef.current) return;
-      if (Date.now() - lastSignedUrlAtRef.current >= STALE_MS) {
+      if (Date.now() - lastSignedUrlAtRef.current >= SIGNED_URL_REFRESH_MS) {
         setRefreshNonce((n) => n + 1);
       }
     };
@@ -321,17 +333,21 @@ export default function SevenDaysToCalm() {
       if (next > day) {
         pushDL("em_day_unlocked", { day, next_day: next });
         flashToast(`Day ${day} complete — Day ${next} unlocked!`);
-      } else {
+      } else if (!challengeComplete) {
+        setChallengeComplete(true);
+        localStorage.setItem("em_challenge_complete", "1");
         pushDL("em_challenge_complete", { day });
         flashToast("You've completed all 7 days!");
       }
     },
-    [flashToast, pushDL, setChallengeDayAndPersist]
+    [challengeComplete, flashToast, pushDL, setChallengeDayAndPersist]
   );
 
   const handleResetConfirm = useCallback(() => {
     localStorage.removeItem("em_challenge_day");
     localStorage.removeItem("em_challenge_start");
+    localStorage.removeItem("em_challenge_complete");
+    setChallengeComplete(false);
     setChallengeDayAndPersist(1);
     setShowResetDialog(false);
     flashToast("Progress reset — back to Day 1.");
@@ -625,11 +641,12 @@ export default function SevenDaysToCalm() {
               </button>
               <button
                 onClick={() => handleDayComplete(currentDay)}
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                aria-label="Mark today's practice complete"
+                disabled={challengeComplete}
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg enabled:hover:bg-blue-600 transition-colors font-medium disabled:bg-green-500 disabled:cursor-default"
+                aria-label={challengeComplete ? "Challenge complete" : "Mark today's practice complete"}
                 id="em-continue-day"
               >
-                Mark Day {currentDay} Complete
+                {challengeComplete ? "Challenge Complete ✓" : `Mark Day ${currentDay} Complete`}
               </button>
             </div>
           </div>
