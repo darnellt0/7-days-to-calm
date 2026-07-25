@@ -600,7 +600,7 @@ export default function SevenDaysToCalm() {
               You&apos;ve been breathing with intention. Now go deeper. The full app includes guided daily practices, a reflection journal, and ongoing support — all in one sacred space.
             </p>
             <a
-              href="https://menopauseapp-raf6f8ae.manus.space"
+              href="https://app.elevatedmovements.com"
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -628,7 +628,7 @@ export default function SevenDaysToCalm() {
               24-hour founding member offer · Use code <strong>RESET50</strong> for 50% off
             </p>
             <a
-              href="https://menopauseapp-raf6f8ae.manus.space"
+              href="https://app.elevatedmovements.com"
               target="_blank"
               rel="noopener noreferrer"
               style={{
