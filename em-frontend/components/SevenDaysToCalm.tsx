@@ -36,12 +36,17 @@ interface DayProgress {
   completed: boolean;
 }
 
+// ElevenLabs signed URLs are valid for ~15 minutes. Refresh well before
+// expiry, and treat anything older than the max age as unusable.
+const SIGNED_URL_REFRESH_MS = 8 * 60 * 1000;
+const SIGNED_URL_MAX_AGE_MS = 14 * 60 * 1000;
+
 export default function SevenDaysToCalm() {
   const convaiRef = useRef<HTMLElement | null>(null);
   const convaiListenersRef = useRef<{ call: EventListener; hangup: EventListener } | null>(null);
   const dayRef = useRef<number>(1);
   const [currentDay, setCurrentDay] = useState<number>(1);
-  const [progress, setProgress] = useState<DayProgress[]>([]);
+  const [challengeComplete, setChallengeComplete] = useState(false);
   const [signedUrl, setSignedUrl] = useState<string>("");
   const [signedUrlError, setSignedUrlError] = useState<string | null>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -49,7 +54,13 @@ export default function SevenDaysToCalm() {
   const [widgetReady, setWidgetReady] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showSkipDialog, setShowSkipDialog] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [coldStart, setColdStart] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const inCallRef = useRef(false);
+  const signedUrlRef = useRef("");
+  const lastSignedUrlAtRef = useRef(0);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dayThemes = useMemo(
     () => [
@@ -100,20 +111,35 @@ export default function SevenDaysToCalm() {
     (window as any).dataLayer.push({ event, ...payload });
   }, []);
 
+  const flashToast = useCallback((message: string) => {
+    setToastMessage(message);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToastMessage(""), 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const syncDayState = useCallback(
     (value: number) => {
       const next = clampDay(value);
       setCurrentDay(next);
-      setProgress(
-        dayThemes.map((t) => ({
-          day: t.day,
-          unlocked: t.day <= next,
-          completed: t.day < next,
-        }))
-      );
       return next;
     },
-    [clampDay, dayThemes]
+    [clampDay]
+  );
+
+  const progress = useMemo<DayProgress[]>(
+    () =>
+      dayThemes.map((t) => ({
+        day: t.day,
+        unlocked: t.day <= currentDay,
+        completed: challengeComplete || t.day < currentDay,
+      })),
+    [challengeComplete, currentDay, dayThemes]
   );
 
   const setChallengeDayAndPersist = useCallback(
@@ -170,42 +196,96 @@ export default function SevenDaysToCalm() {
     const savedStart = localStorage.getItem("em_challenge_start");
     const savedDay = savedDayStr ? parseInt(savedDayStr, 10) : 1;
     setChallengeDayAndPersist(Number.isNaN(savedDay) ? 1 : savedDay);
+    setChallengeComplete(localStorage.getItem("em_challenge_complete") === "1");
     if (!savedStart) localStorage.setItem("em_challenge_start", new Date().toISOString());
   }, [setChallengeDayAndPersist]);
 
-  // Fetch signed URL whenever the day changes
+  // Fetch signed URL whenever the day changes (or a refresh is requested).
+  // Retries with backoff because the free-tier Render backend spins down when
+  // idle and can take up to ~60s to wake on the first request of the day.
   useEffect(() => {
     const controller = new AbortController();
     const base = backendBase?.replace(/\/$/, "") || "";
     if (!base) return undefined;
     const url = `${base}/convai/signed-url?challenge_day=${currentDay}`;
+    const RETRY_DELAYS_MS = [3000, 6000, 12000, 20000, 30000];
+
+    let cancelled = false;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const fetchSignedUrl = async () => {
-      try {
-        setSignedUrlError(null);
-        const response = await fetch(url, { credentials: "omit", signal: controller.signal });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`HTTP ${response.status} ${response.statusText} | ${text}`);
+      setSignedUrlError(null);
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+        try {
+          const response = await fetch(url, { credentials: "omit", signal: controller.signal });
+          if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`HTTP ${response.status} ${response.statusText} | ${text}`);
+          }
+          const data = await response.json();
+          if (!data?.signed_url) {
+            throw new Error("Response missing signed_url");
+          }
+          if (cancelled) return;
+          signedUrlRef.current = data.signed_url;
+          lastSignedUrlAtRef.current = Date.now();
+          setSignedUrl(data.signed_url);
+          setColdStart(false);
+          console.log("[EM] got signed url for day", currentDay);
+          return;
+        } catch (err) {
+          if (controller.signal.aborted || cancelled) return;
+          console.warn(`[EM] signed-url attempt ${attempt + 1} failed`, err);
+          if (attempt === RETRY_DELAYS_MS.length) {
+            setColdStart(false);
+            const age = Date.now() - lastSignedUrlAtRef.current;
+            if (signedUrlRef.current && age < SIGNED_URL_MAX_AGE_MS) {
+              // The previous URL is still inside its validity window — keep
+              // the widget up; the staleness check will retry the refresh.
+              console.warn("[EM] keeping still-valid signed URL after refresh failure");
+              return;
+            }
+            signedUrlRef.current = "";
+            lastSignedUrlAtRef.current = 0;
+            setSignedUrl("");
+            const message = err instanceof Error ? err.message : "Unknown signed-url error";
+            setSignedUrlError(message);
+            return;
+          }
+          setColdStart(true);
+          await wait(RETRY_DELAYS_MS[attempt]);
+          if (controller.signal.aborted || cancelled) return;
         }
-        const data = await response.json();
-        if (!data?.signed_url) {
-          throw new Error("Response missing signed_url");
-        }
-        setSignedUrl(data.signed_url);
-        console.log("[EM] got signed url for day", currentDay);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        console.error("[EM] signed-url error", err);
-        setSignedUrl("");
-        const message = err instanceof Error ? err.message : "Unknown signed-url error";
-        setSignedUrlError(message);
       }
     };
 
     fetchSignedUrl();
-    return () => controller.abort();
-  }, [backendBase, currentDay]);
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [backendBase, currentDay, refreshNonce]);
+
+  // Signed URLs expire after ~15 minutes. Refresh a stale one in the
+  // background (never mid-call) so a tab left open still connects.
+  useEffect(() => {
+    const maybeRefresh = () => {
+      if (inCallRef.current) return;
+      if (!lastSignedUrlAtRef.current) return;
+      if (Date.now() - lastSignedUrlAtRef.current >= SIGNED_URL_REFRESH_MS) {
+        setRefreshNonce((n) => n + 1);
+      }
+    };
+    const interval = setInterval(maybeRefresh, 60_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") maybeRefresh();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   // Keep widget attributes aligned with the challenge day
   useEffect(() => {
@@ -250,30 +330,38 @@ export default function SevenDaysToCalm() {
   const handleDayComplete = useCallback(
     (day: number) => {
       const next = setChallengeDayAndPersist(day + 1);
-      pushDL("em_day_unlocked", { day, next_day: next });
+      if (next > day) {
+        pushDL("em_day_unlocked", { day, next_day: next });
+        flashToast(`Day ${day} complete — Day ${next} unlocked!`);
+      } else if (!challengeComplete) {
+        setChallengeComplete(true);
+        localStorage.setItem("em_challenge_complete", "1");
+        pushDL("em_challenge_complete", { day });
+        flashToast("You've completed all 7 days!");
+      }
     },
-    [pushDL, setChallengeDayAndPersist]
+    [challengeComplete, flashToast, pushDL, setChallengeDayAndPersist]
   );
 
   const handleResetConfirm = useCallback(() => {
     localStorage.removeItem("em_challenge_day");
     localStorage.removeItem("em_challenge_start");
+    localStorage.removeItem("em_challenge_complete");
+    setChallengeComplete(false);
     setChallengeDayAndPersist(1);
     setShowResetDialog(false);
-    setShowToast(true);
+    flashToast("Progress reset — back to Day 1.");
     pushDL("em_challenge_reset");
-    setTimeout(() => setShowToast(false), 3000);
-  }, [pushDL, setChallengeDayAndPersist]);
+  }, [flashToast, pushDL, setChallengeDayAndPersist]);
 
   const handleSkipToTodayConfirm = useCallback(() => {
     const currentDay = dayRef.current;
     const today = computeTodayDay();
     setChallengeDayAndPersist(today);
     setShowSkipDialog(false);
-    setShowToast(true);
+    flashToast(`Jumped to Day ${today}.`);
     pushDL("em_jump_to_today", { from: currentDay, to: today, confirmed: true });
-    setTimeout(() => setShowToast(false), 3000);
-  }, [pushDL, setChallengeDayAndPersist, computeTodayDay]);
+  }, [flashToast, pushDL, setChallengeDayAndPersist, computeTodayDay]);
 
   const handleSkipTodayClick = useCallback(() => {
     const current = dayRef.current;
@@ -330,6 +418,7 @@ export default function SevenDaysToCalm() {
       applyAttributes(dayRef.current);
 
       const handleCall: EventListener = (event) => {
+        inCallRef.current = true;
         const custom = event as CustomEvent<{ config?: { clientTools?: Record<string, unknown> } }>;
         if (custom.detail?.config) {
           custom.detail.config.clientTools = {
@@ -379,7 +468,10 @@ export default function SevenDaysToCalm() {
         });
       };
 
-      const handleHangup: EventListener = () => pushDL("em_convai_ended", { day: dayRef.current });
+      const handleHangup: EventListener = () => {
+        inCallRef.current = false;
+        pushDL("em_convai_ended", { day: dayRef.current });
+      };
 
       node.addEventListener("elevenlabs-convai:call", handleCall);
       node.addEventListener("elevenlabs-convai:hangup", handleHangup);
@@ -392,6 +484,7 @@ export default function SevenDaysToCalm() {
   const widgetStatusMessage = (() => {
     if (scriptFailed) return "Shria widget script failed to load.";
     if (signedUrlError) return "Unable to load Shria guide.";
+    if (coldStart) return "Shria is waking up — the first visit of the day can take up to a minute…";
     if (!scriptLoaded) return "Loading Shria resources...";
     if (!widgetReady) return "Preparing Shria...";
     if (!signedUrl) return "Loading guide...";
@@ -402,7 +495,7 @@ export default function SevenDaysToCalm() {
     <>
       {/* ElevenLabs ConvAI Widget Script */}
       <Script
-        src="https://elevenlabs.io/convai-widget/index.js"
+        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
         strategy="afterInteractive"
         onLoad={() => setScriptLoaded(true)}
         onError={(event) => {
@@ -506,6 +599,17 @@ export default function SevenDaysToCalm() {
               ) : (
                 <div className="text-center text-gray-500">
                   <p>{widgetStatusMessage}</p>
+                  {signedUrlError && (
+                    <button
+                      onClick={() => {
+                        setSignedUrlError(null);
+                        setRefreshNonce((n) => n + 1);
+                      }}
+                      className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                    >
+                      Try again
+                    </button>
+                  )}
                   {signedUrlError && process.env.NODE_ENV !== "production" && (
                     <p className="text-xs mt-2 text-red-500 break-words">{signedUrlError}</p>
                   )}
@@ -515,7 +619,7 @@ export default function SevenDaysToCalm() {
 
             {canRenderWidget && (
               <div className="text-center text-sm text-gray-500">
-                <p>Click "Start a call" to begin Day {currentDay}: {dayThemes[currentDay - 1].title}</p>
+                <p>Click "Begin" to start Day {currentDay}: {dayThemes[currentDay - 1].title}</p>
                 <p className="text-xs mt-2">Shria already knows you're on Day {currentDay} of the challenge.</p>
               </div>
             )}
@@ -537,11 +641,12 @@ export default function SevenDaysToCalm() {
               </button>
               <button
                 onClick={() => handleDayComplete(currentDay)}
-                className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                aria-label="Continue today's practice"
+                disabled={challengeComplete}
+                className="px-6 py-3 bg-blue-500 text-white rounded-lg enabled:hover:bg-blue-600 transition-colors font-medium disabled:bg-green-500 disabled:cursor-default"
+                aria-label={challengeComplete ? "Challenge complete" : "Mark today's practice complete"}
                 id="em-continue-day"
               >
-                Continue Day {currentDay}
+                {challengeComplete ? "Challenge Complete ✓" : `Mark Day ${currentDay} Complete`}
               </button>
             </div>
           </div>
@@ -699,13 +804,13 @@ export default function SevenDaysToCalm() {
       )}
 
       {/* Toast */}
-      {showToast && (
+      {toastMessage && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span className="font-medium">Progress reset successfully!</span>
+            <span className="font-medium">{toastMessage}</span>
           </div>
         </div>
       )}
