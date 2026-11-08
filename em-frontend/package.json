@@ -6,20 +6,32 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "tsc --noEmit",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@elevenlabs/client": "1.12.0",
+    "next": "15.5.29",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "next": "14.2.35"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript": "^5",
+    "autoprefixer": "^10.0.1",
+    "postcss": "8.5.32",
     "tailwindcss": "^3.4.0",
-    "postcss": "^8",
-    "autoprefixer": "^10.0.1"
+    "typescript": "^5"
+  },
+  "overrides": {
+    "glob": "14.0.4",
+    "minimatch": "11.0.5",
+    "postcss": "$postcss"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

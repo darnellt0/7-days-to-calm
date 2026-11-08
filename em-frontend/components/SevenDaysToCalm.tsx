@@ -1,34 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Script from "next/script";
-
-// TS: declare the web component props we use (signed-url). Do NOT include api-key or agent-id here.
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "elevenlabs-convai": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement> & {
-          id?: string;
-          "signed-url"?: string;
-          "agent-id"?: string;
-          variant?: string;
-          "dynamic-variables"?: string;
-          "override-first-message"?: string;
-          "action-text"?: string;
-          "start-call-text"?: string;
-          "end-call-text"?: string;
-          "expand-text"?: string;
-          "listening-text"?: string;
-          "speaking-text"?: string;
-          "avatar-orb-color-1"?: string;
-          "avatar-orb-color-2"?: string;
-        },
-        HTMLElement
-      >;
-    }
-  }
-}
+import ShriaGuide from "./ShriaGuide";
 
 interface DayProgress {
   day: number;
@@ -37,16 +10,10 @@ interface DayProgress {
 }
 
 export default function SevenDaysToCalm() {
-  const convaiRef = useRef<HTMLElement | null>(null);
-  const convaiListenersRef = useRef<{ call: EventListener; hangup: EventListener } | null>(null);
   const dayRef = useRef<number>(1);
   const [currentDay, setCurrentDay] = useState<number>(1);
   const [progress, setProgress] = useState<DayProgress[]>([]);
-  const [signedUrl, setSignedUrl] = useState<string>("");
-  const [signedUrlError, setSignedUrlError] = useState<string | null>(null);
-  const [scriptLoaded, setScriptLoaded] = useState(false);
-  const [scriptFailed, setScriptFailed] = useState(false);
-  const [widgetReady, setWidgetReady] = useState(false);
+  const [finalComplete, setFinalComplete] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showSkipDialog, setShowSkipDialog] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -64,21 +31,8 @@ export default function SevenDaysToCalm() {
     []
   );
 
-  const backendBase = useMemo(() => {
-    const envBase = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
-    if (envBase) return envBase;
-    if (typeof window === "undefined") {
-      return "https://seven-days-to-calm.onrender.com";
-    }
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
-      return "http://localhost:8787";
-    }
-    return "https://seven-days-to-calm.onrender.com";
-  }, []);
-
   const clampDay = useCallback(
-    (value: number) => Math.min(Math.max(value, 1), dayThemes.length),
+    (value: number) => Number.isFinite(Number(value)) ? Math.min(Math.max(Math.trunc(Number(value)), 1), dayThemes.length) : 1,
     [dayThemes.length]
   );
 
@@ -89,7 +43,7 @@ export default function SevenDaysToCalm() {
       const start = new Date(startStr);
       const now = new Date();
       const daysDiff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      return clampDay(daysDiff + 1);
+      return Number.isFinite(daysDiff) ? clampDay(daysDiff + 1) : 1;
     } catch {
       return 1;
     }
@@ -103,6 +57,7 @@ export default function SevenDaysToCalm() {
   const syncDayState = useCallback(
     (value: number) => {
       const next = clampDay(value);
+      dayRef.current = next;
       setCurrentDay(next);
       setProgress(
         dayThemes.map((t) => ({
@@ -130,42 +85,9 @@ export default function SevenDaysToCalm() {
     dayRef.current = currentDay;
   }, [currentDay]);
 
-  useEffect(() => {
-    if (widgetReady) return;
-    if (typeof customElements === "undefined") return;
-    const defined = customElements.get("elevenlabs-convai");
-    if (defined) {
-      setWidgetReady(true);
-      return;
-    }
-    if (!("whenDefined" in customElements)) return;
-    let cancelled = false;
-    customElements
-      .whenDefined("elevenlabs-convai")
-      .then(() => {
-        if (!cancelled) {
-          setWidgetReady(true);
-        }
-      })
-      .catch((err) => console.error("[EM] elevenlabs-convai definition error", err));
-    return () => {
-      cancelled = true;
-    };
-  }, [scriptLoaded, widgetReady]);
-
-  useEffect(() => {
-    if (!widgetReady) return;
-    const widget = document.querySelector<HTMLElement>("elevenlabs-convai");
-    if (widget) {
-      widget.style.display = "block";
-      widget.style.width = "100%";
-      widget.style.height = "600px";
-      widget.style.minHeight = "600px";
-    }
-  }, [widgetReady, signedUrl]);
-
   // Load saved progress once
   useEffect(() => {
+    setFinalComplete(localStorage.getItem("em_challenge_complete") === "true");
     const savedDayStr = localStorage.getItem("em_challenge_day");
     const savedStart = localStorage.getItem("em_challenge_start");
     const savedDay = savedDayStr ? parseInt(savedDayStr, 10) : 1;
@@ -173,82 +95,12 @@ export default function SevenDaysToCalm() {
     if (!savedStart) localStorage.setItem("em_challenge_start", new Date().toISOString());
   }, [setChallengeDayAndPersist]);
 
-  // Fetch signed URL whenever the day changes
-  useEffect(() => {
-    const controller = new AbortController();
-    const base = backendBase?.replace(/\/$/, "") || "";
-    if (!base) return undefined;
-    const url = `${base}/convai/signed-url?challenge_day=${currentDay}`;
-
-    const fetchSignedUrl = async () => {
-      try {
-        setSignedUrlError(null);
-        const response = await fetch(url, { credentials: "omit", signal: controller.signal });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`HTTP ${response.status} ${response.statusText} | ${text}`);
-        }
-        const data = await response.json();
-        if (!data?.signed_url) {
-          throw new Error("Response missing signed_url");
-        }
-        setSignedUrl(data.signed_url);
-        console.log("[EM] got signed url for day", currentDay);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        console.error("[EM] signed-url error", err);
-        setSignedUrl("");
-        const message = err instanceof Error ? err.message : "Unknown signed-url error";
-        setSignedUrlError(message);
-      }
-    };
-
-    fetchSignedUrl();
-    return () => controller.abort();
-  }, [backendBase, currentDay]);
-
-  // Keep widget attributes aligned with the challenge day
-  useEffect(() => {
-    const el = convaiRef.current;
-    if (!el) return;
-    const safeDay = clampDay(currentDay);
-    // Expanded dynamic variables for immediate tailoring
-    const dyn = {
-      challenge_day: safeDay,
-      time_available: null,      // 2 | 5 | 8 | null
-      energy: null,              // "wired"|"tired"|"scattered"|"anxious"|null
-      environment: null,         // "desk"|"commute"|"bed"|null
-      intent: null               // "sleep"|"pre-meeting"|null
-    };
-    el.setAttribute("dynamic-variables", JSON.stringify(dyn));
-    const title = dayThemes[safeDay - 1]?.title ?? "Calm";
-    // Softer, invitational first message (tone aligned with Shria coach)
-    el.setAttribute(
-      "override-first-message",
-      `Hey, you made it. Day ${safeDay} — ${title}. Would 2, 5, or 8 minutes feel good right now?`
-    );
-  }, [clampDay, currentDay, dayThemes]);
-
-  // Simple diagnostics to mirror the spec request
-  useEffect(() => {
-    const check = () => {
-      const el = document.querySelector("elevenlabs-convai") as HTMLElement | null;
-      const scriptTag = document.querySelector('script[src*="elevenlabs"]');
-      console.log("[EM] script present:", !!scriptTag);
-      console.log("[EM] convai element:", el);
-      console.log("[EM] convai shadowRoot:", (el as any)?.shadowRoot);
-    };
-    check();
-    const t1 = setTimeout(check, 1000);
-    const t2 = setTimeout(check, 3000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, []);
-
   const handleDayComplete = useCallback(
     (day: number) => {
+      if (day === 7) {
+        setFinalComplete(true);
+        localStorage.setItem("em_challenge_complete", "true");
+      }
       const next = setChallengeDayAndPersist(day + 1);
       pushDL("em_day_unlocked", { day, next_day: next });
     },
@@ -257,7 +109,9 @@ export default function SevenDaysToCalm() {
 
   const handleResetConfirm = useCallback(() => {
     localStorage.removeItem("em_challenge_day");
-    localStorage.removeItem("em_challenge_start");
+    localStorage.setItem("em_challenge_start", new Date().toISOString());
+    localStorage.removeItem("em_challenge_complete");
+    setFinalComplete(false);
     setChallengeDayAndPersist(1);
     setShowResetDialog(false);
     setShowToast(true);
@@ -285,132 +139,8 @@ export default function SevenDaysToCalm() {
     }
   }, [pushDL, computeTodayDay]);
 
-  useEffect(() => {
-    const handleReady = () => console.log("[EM] widget ready");
-    window.addEventListener("elevenlabs-convai-ready", handleReady as EventListener);
-    if (typeof customElements !== "undefined" && "whenDefined" in customElements) {
-      customElements.whenDefined("elevenlabs-convai").then(handleReady).catch(() => {});
-    }
-    return () => window.removeEventListener("elevenlabs-convai-ready", handleReady as EventListener);
-  }, []);
-
-  const attachConvaiElement = useCallback(
-    (node: HTMLElement | null) => {
-      if (convaiRef.current && convaiListenersRef.current) {
-        convaiRef.current.removeEventListener("elevenlabs-convai:call", convaiListenersRef.current.call);
-        convaiRef.current.removeEventListener("elevenlabs-convai:hangup", convaiListenersRef.current.hangup);
-      }
-
-      convaiRef.current = node;
-
-      if (!node) {
-        convaiListenersRef.current = null;
-        return;
-      }
-
-      const applyAttributes = (dayValue: number) => {
-        const safeDay = clampDay(dayValue);
-        const title = dayThemes[safeDay - 1]?.title ?? "Calm";
-        // Expanded dynamic variables for immediate tailoring
-        const dyn = {
-          challenge_day: safeDay,
-          time_available: null,      // 2 | 5 | 8 | null
-          energy: null,              // "wired"|"tired"|"scattered"|"anxious"|null
-          environment: null,         // "desk"|"commute"|"bed"|null
-          intent: null               // "sleep"|"pre-meeting"|null
-        };
-        node.setAttribute("dynamic-variables", JSON.stringify(dyn));
-        // Softer, invitational first message (tone aligned with Shria coach)
-        node.setAttribute(
-          "override-first-message",
-          `Hey, you made it. Day ${safeDay} — ${title}. Would 2, 5, or 8 minutes feel good right now?`
-        );
-      };
-
-      applyAttributes(dayRef.current);
-
-      const handleCall: EventListener = (event) => {
-        const custom = event as CustomEvent<{ config?: { clientTools?: Record<string, unknown> } }>;
-        if (custom.detail?.config) {
-          custom.detail.config.clientTools = {
-            setChallengeDay: ({ day }: { day: number }) => {
-              const next = setChallengeDayAndPersist(day);
-              pushDL("em_day_unlocked", { day: next });
-              return { ok: true, day: next };
-            },
-            trackEvent: ({ name, payload }: { name?: string; payload?: Record<string, unknown> }) => {
-              pushDL(name || "em_custom", payload || {});
-              return { ok: true };
-            },
-            openLink: ({ url }: { url?: string }) => {
-              try {
-                if (url) window.open(url, "_blank", "noopener,noreferrer");
-              } catch (err) {
-                console.error("[EM] openLink failed", err);
-              }
-              return { ok: true };
-            },
-            getChallengeDay: () => ({ day: dayRef.current }),
-            setReminder: ({ time, label }: { time?: string; label?: string }) => {
-              try {
-                localStorage.setItem("em_reminder", JSON.stringify({ time, label }));
-                pushDL("em_reminder_set", { time, label });
-                return { ok: true };
-              } catch (err) {
-                pushDL("em_reminder_error", { message: String(err) });
-                return { ok: false, error: String(err) };
-              }
-            },
-          };
-        }
-
-        // Start event with richer context (if dyn vars were set earlier)
-        let dyn: Record<string, unknown> = {};
-        try {
-          const dynStr = convaiRef.current?.getAttribute("dynamic-variables");
-          if (dynStr) dyn = JSON.parse(dynStr);
-        } catch (err) {
-          console.error("[EM] Failed to parse dynamic-variables", err);
-        }
-        pushDL("em_convai_started", {
-          day: dayRef.current,
-          time_available: dyn.time_available || null,
-          intent: dyn.intent || null,
-        });
-      };
-
-      const handleHangup: EventListener = () => pushDL("em_convai_ended", { day: dayRef.current });
-
-      node.addEventListener("elevenlabs-convai:call", handleCall);
-      node.addEventListener("elevenlabs-convai:hangup", handleHangup);
-      convaiListenersRef.current = { call: handleCall, hangup: handleHangup };
-    },
-    [clampDay, dayThemes, pushDL, setChallengeDayAndPersist]
-  );
-
-  const canRenderWidget = widgetReady && Boolean(signedUrl) && !scriptFailed && !signedUrlError;
-  const widgetStatusMessage = (() => {
-    if (scriptFailed) return "Shria widget script failed to load.";
-    if (signedUrlError) return "Unable to load Shria guide.";
-    if (!scriptLoaded) return "Loading Shria resources...";
-    if (!widgetReady) return "Preparing Shria...";
-    if (!signedUrl) return "Loading guide...";
-    return "Loading guide...";
-  })();
-
   return (
     <>
-      {/* ElevenLabs ConvAI Widget Script */}
-      <Script
-        src="https://elevenlabs.io/convai-widget/index.js"
-        strategy="afterInteractive"
-        onLoad={() => setScriptLoaded(true)}
-        onError={(event) => {
-          console.error("[EM] convai widget script failed to load", event);
-          setScriptFailed(true);
-        }}
-      />
-
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
@@ -420,12 +150,12 @@ export default function SevenDaysToCalm() {
 
           {/* Progress Bar */}
           <div className="mb-12">
-            <div className="flex justify-between items-center mb-4">
+            <div className="grid grid-cols-7 gap-1 items-start mb-4">
               {progress.map((p) => (
-                <div key={p.day} className="flex flex-col items-center">
+                <div key={p.day} className="min-w-0 flex flex-col items-center">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold transition-all ${
-                      p.completed
+                    className={`w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold transition-all ${
+                      (p.completed || (p.day === 7 && finalComplete))
                         ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white"
                         : p.day === currentDay
                         ? "bg-blue-500 text-white ring-4 ring-blue-200"
@@ -436,7 +166,7 @@ export default function SevenDaysToCalm() {
                   >
                     {p.day}
                   </div>
-                  <span className="text-xs mt-2 text-gray-600">{dayThemes[p.day - 1].title}</span>
+                  <span className="w-full break-words text-center text-[10px] sm:text-xs leading-tight mt-2 text-gray-600">{dayThemes[p.day - 1].title}</span>
                 </div>
               ))}
             </div>
@@ -460,65 +190,13 @@ export default function SevenDaysToCalm() {
               <p className="text-gray-600">{dayThemes[currentDay - 1].description}</p>
             </div>
 
-            {/* Widget container */}
-            <div
-              id="shria-widget-container"
-              className="w-full max-w-4xl mx-auto my-8"
-              style={{
-                display: "block",
-                visibility: "visible",
-                height: "600px",
-                minHeight: "600px",
-                overflow: "visible",
-              }}
-            >
-              {canRenderWidget ? (
-                React.createElement("elevenlabs-convai", {
-                  key: signedUrl,
-                  ref: attachConvaiElement as unknown as React.Ref<HTMLElement>,
-                  id: "em-shria",
-                  "signed-url": signedUrl,
-                  "agent-id": "agent_4201k708pqxsed39y0vsz05gn66e",
-                  variant: "full-width",
-                  style: {
-                    display: "block",
-                    width: "100%",
-                    height: "600px",
-                    minHeight: "600px",
-                  },
-                  "dynamic-variables": JSON.stringify({
-                    challenge_day: currentDay,
-                    time_available: null,
-                    energy: null,
-                    environment: null,
-                    intent: null,
-                  }),
-                  "override-first-message": `Hey, you made it. Day ${currentDay} — ${dayThemes[currentDay - 1].title}. Would 2, 5, or 8 minutes feel good right now?`,
-                  "action-text": "Start today's practice",
-                  "start-call-text": "Begin",
-                  "end-call-text": "End",
-                  "expand-text": "Open Shria",
-                  "listening-text": "listening...",
-                  "speaking-text": "speaking...",
-                  "avatar-orb-color-1": "#176161",
-                  "avatar-orb-color-2": "#e0cd67",
-                })
-              ) : (
-                <div className="text-center text-gray-500">
-                  <p>{widgetStatusMessage}</p>
-                  {signedUrlError && process.env.NODE_ENV !== "production" && (
-                    <p className="text-xs mt-2 text-red-500 break-words">{signedUrlError}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {canRenderWidget && (
-              <div className="text-center text-sm text-gray-500">
-                <p>Click "Start a call" to begin Day {currentDay}: {dayThemes[currentDay - 1].title}</p>
-                <p className="text-xs mt-2">Shria already knows you're on Day {currentDay} of the challenge.</p>
-              </div>
-            )}
+            <ShriaGuide key={currentDay}
+              day={currentDay}
+              title={dayThemes[currentDay - 1].title}
+              onDayChange={setChallengeDayAndPersist}
+              onEvent={pushDL}
+            />
+            {finalComplete && <p role="status" className="text-center text-teal-700">Seven days complete. Keep making time for calm.</p>}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-3">
               <button
@@ -538,10 +216,10 @@ export default function SevenDaysToCalm() {
               <button
                 onClick={() => handleDayComplete(currentDay)}
                 className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-                aria-label="Continue today's practice"
+                aria-label={`Complete Day ${currentDay}`}
                 id="em-continue-day"
               >
-                Continue Day {currentDay}
+                Complete Day {currentDay}
               </button>
             </div>
           </div>

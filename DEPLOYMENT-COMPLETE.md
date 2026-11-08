@@ -1,3 +1,5 @@
+> Historical deployment notes. Use README.md for current configuration and docs/VERIFICATION.md for verified status. Previously recorded credentials have been removed and must be rotated.
+
 # Deployment Configuration Complete
 
 ## Overview
@@ -119,7 +121,7 @@ git push -u origin main
 ### Backend (Render)
 ```bash
 # Required
-ELEVENLABS_API_KEY=sk_xxxxxxxxxxxxxxxxxxxxx
+ELEVENLABS_API_KEY=REPLACE_WITH_ROTATED_API_KEY_SECRET
 ELEVENLABS_AGENT_ID=agent_4201k708pqxsed39y0vsz05gn66e
 
 # CORS (update after frontend deployment)

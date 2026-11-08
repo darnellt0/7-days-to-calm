@@ -17,10 +17,10 @@ services:
         value: 3.11.0
       - key: ELEVENLABS_API_KEY
         sync: false  # Set manually in Render dashboard
-      - key: ELEVENLABS_AGENT_ID
+      - key: AGENT_ID
         sync: false
-      - key: CORS_ORIGINS
-        value: http://localhost:3000,http://localhost:3001
+      - key: CORS_ALLOWLIST
+        value: https://7-days-to-calm.vercel.app,https://elevatedmovements.com,https://www.elevatedmovements.com
       - key: LOG_LEVEL
         value: info
       - key: ENVIRONMENT

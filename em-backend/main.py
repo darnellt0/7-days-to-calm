@@ -1,156 +1,109 @@
-"""
-FastAPI Backend for 7 Days to Calm
-Generates ElevenLabs ConvAI signed URLs and logs completions
-"""
-
-import json
+"""Production signing and challenge tools for 7 Days to Calm."""
+import hmac
 import logging
 import os
-from datetime import datetime
-from typing import Optional
-from urllib.parse import quote
+import traceback
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Annotated, Optional
+from urllib.parse import urlparse
+from uuid import uuid4
 
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-# Load environment variables from .env file
-load_dotenv()
-
+load_dotenv(Path(__file__).with_name('.env'))
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("em-backend")
-
-app = FastAPI(title="7 Days to Calm API")
-
-# ---- CORS: exact origins only
-ALLOW_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "http://localhost:3003",
-    "http://127.0.0.1:3003",
-    "https://7-days-to-calm.vercel.app",
-    "https://7dtc.elevatedmovements.com",
-    "https://7-days-to-calm.elevatedmovements.com",
-    "https://elevatedmovements.com",
-    "https://www.elevatedmovements.com",
+logger = logging.getLogger('em-backend')
+DEFAULT_ORIGINS = [
+    'http://localhost:3000', 'http://127.0.0.1:3000',
+    'http://localhost:3001', 'http://127.0.0.1:3001',
+    'http://localhost:3003', 'http://127.0.0.1:3003',
+    'https://7-days-to-calm.vercel.app', 'https://7dtc.elevatedmovements.com',
+    'https://7-days-to-calm.elevatedmovements.com',
+    'https://elevatedmovements.com', 'https://www.elevatedmovements.com',
 ]
+ALLOW_ORIGINS = [x.strip() for x in os.getenv('CORS_ALLOWLIST', ','.join(DEFAULT_ORIGINS)).split(',') if x.strip()]
+app = FastAPI(title='7 Days to Calm API')
+app.add_middleware(CORSMiddleware, allow_origins=ALLOW_ORIGINS,
+                   allow_credentials=False, allow_methods=['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
+                   allow_headers=['*'], expose_headers=['X-Request-ID'])
+Day = Annotated[int, Query(ge=1, le=7)]
 
-DEFAULT_AGENT_ID = "agent_4201k708pqxsed39y0vsz05gn66e"
-REQUIRED_ENV_VARS = ["ELEVENLABS_API_KEY"]
+def now():
+    return datetime.now(timezone.utc).isoformat()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOW_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
-    allow_headers=["*"],
-)
+def agent_id():
+    return (os.getenv('AGENT_ID') or os.getenv('ELEVENLABS_AGENT_ID') or '').strip()
 
-missing_at_start = [env for env in REQUIRED_ENV_VARS if not os.getenv(env)]
-if missing_at_start:
-    logger.error("Startup missing required environment variables: %s", missing_at_start)
-else:
-    logger.info("All required environment variables present.")
+def missing_env():
+    missing = []
+    if not os.getenv('ELEVENLABS_API_KEY', '').strip():
+        missing.append('ELEVENLABS_API_KEY')
+    if not agent_id():
+        missing.append('AGENT_ID')
+    return missing
 
-def _require_env(name: str) -> str:
-    v = os.getenv(name)
-    if not v:
-        logger.error("Missing required environment variable: %s", name)
-        raise RuntimeError(f"Missing required environment variable: {name}")
-    return v
+@app.get('/health')
+def health():
+    missing = missing_env()
+    return {'status': 'healthy', 'ready': not missing, 'timestamp': now(),
+            'agent_configured': bool(agent_id()),
+            'api_key_configured': 'ELEVENLABS_API_KEY' not in missing, 'missing_env': missing}
 
+def _signed_url():
+    # Supported method in the pinned SDK. Day context belongs in initiation data.
+    client = ElevenLabs(api_key=os.environ['ELEVENLABS_API_KEY'].strip(), timeout=20)
+    result = client.conversational_ai.conversations.get_signed_url(agent_id=agent_id())
+    signed_url = result.signed_url
+    parsed = urlparse(signed_url)
+    if parsed.scheme != 'wss' or not parsed.hostname or not parsed.hostname.endswith('.elevenlabs.io'):
+        raise ValueError('Invalid provider response')
+    return signed_url
 
-def _get_agent_id() -> str:
-    agent_id = os.getenv("AGENT_ID")
-    if agent_id:
-        return agent_id
-    logger.warning(
-        "AGENT_ID not set; falling back to default %s. Configure AGENT_ID for production.",
-        DEFAULT_AGENT_ID,
-    )
-    return DEFAULT_AGENT_ID
-
-
-def _signed_url(agent_id: str, challenge_day: int = 1) -> str:
-    """
-    Fetch a signed URL from ElevenLabs, passing the current challenge day when possible.
-    Falls back to the conversation endpoint if the agent API is unavailable.
-    """
-    api_key = _require_env("ELEVENLABS_API_KEY")
-    client = ElevenLabs(api_key=api_key)
-
-    # Preferred path: agent widget API that accepts custom data.
+@app.get('/convai/signed-url')
+def get_signed_url(response: Response, request: Request, challenge_day: Day = 1):
+    request_id = uuid4().hex
+    headers = {'Cache-Control': 'no-store', 'X-Request-ID': request_id}
+    origin = request.headers.get('origin')
+    if origin and origin not in ALLOW_ORIGINS:
+        raise HTTPException(403, detail='Origin not allowed', headers=headers)
+    missing = missing_env()
+    if missing:
+        logger.error('signing unavailable request_id=%s missing_env=%s', request_id, ','.join(missing))
+        raise HTTPException(503, detail='Voice guide is not configured. Contact the site administrator.', headers=headers)
     try:
-        httpx_client = client._client_wrapper.httpx_client  # type: ignore[attr-defined]
-        response = httpx_client.request(
-            f"v1/convai/agents/{agent_id}/signed-url",
-            method="POST",
-            json={"custom_llm_extra_body": {"challenge_day": challenge_day}},
-            headers={
-                "content-type": "application/json",
-            },
-        )
-        response.raise_for_status()
-        payload = response.json()
-        signed_url = payload.get("signed_url") or payload.get("url")
-        if signed_url:
-            return signed_url
-        raise RuntimeError("Missing signed_url in agent response")
+        signed_url = _signed_url()
     except Exception as exc:
-        logger.warning("Primary signed-url request failed, attempting fallback: %s", exc)
+        # Raw provider exception messages can contain keys or signed URLs.
+        frames = traceback.extract_tb(exc.__traceback__)
+        location = ' > '.join(f'{Path(f.filename).name}:{f.lineno}:{f.name}' for f in frames)
+        body = getattr(exc, 'body', {})
+        detail = body.get('detail', {}) if isinstance(body, dict) else {}
+        code = detail.get('code') if isinstance(detail, dict) else None
+        safe_code = code if code in {'invalid_api_key', 'insufficient_permissions', 'agent_not_found', 'quota_exceeded'} else 'unclassified'
+        logger.error('provider error request_id=%s code=%s', request_id, safe_code)
+        logger.error('signing failed request_id=%s day=%s type=%s provider_status=%s trace=%s',
+                     request_id, challenge_day, type(exc).__name__, getattr(exc, 'status_code', None), location)
+        raise HTTPException(502, detail='Voice provider unavailable. Please try again.', headers=headers) from None
+    response.headers.update(headers)
+    logger.info('signed URL issued request_id=%s day=%s', request_id, challenge_day)
+    return {'signed_url': signed_url, 'challenge_day': challenge_day}
 
-    # Fallback: conversation endpoint (no extra body support). Append contextual hint.
-    response = client.conversational_ai.conversations.get_signed_url(agent_id=agent_id)
-    signed_url = getattr(response, "signed_url", None) or getattr(response, "url", None)
-    if not signed_url and isinstance(response, dict):
-        signed_url = response.get("signed_url") or response.get("url")
+@app.post('/tool/log-goal')
+def log_goal(day: Day, completed: bool = True, authorization: Optional[str] = Header(None)):
+    expected = os.getenv('TOOL_BEARER_TOKEN', '').strip()
+    if expected and not hmac.compare_digest(authorization or '', f'Bearer {expected}'):
+        raise HTTPException(401, detail='Invalid token')
+    data = {'day': day, 'completed': completed, 'timestamp': now()}
+    logger.info('goal logged day=%s completed=%s', day, completed)
+    return {'success': True, 'message': f'Day {day} logged', 'data': data}
 
-    if not signed_url:
-        raise RuntimeError("Signed URL missing from ElevenLabs response")
-
-    fallback_context = quote(json.dumps({"challenge_day": challenge_day}))
-    separator = "&" if "?" in signed_url else "?"
-    return f"{signed_url}{separator}custom_llm_extra_body={fallback_context}"
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "agent_configured": bool(os.getenv("AGENT_ID")),
-        "api_key_configured": bool(os.getenv("ELEVENLABS_API_KEY")),
-        "agent_in_use": _get_agent_id(),
-        "missing_env": [env for env in REQUIRED_ENV_VARS if not os.getenv(env)],
-    }
-
-@app.get("/convai/signed-url")
-async def get_signed_url(challenge_day: int = 1):
-    """
-    Return a signed URL for the web component: <elevenlabs-convai signed-url="...">
-    Includes challenge_day context for the agent to reference
-    """
-    try:
-        agent_id = _get_agent_id()
-        signed_url = _signed_url(agent_id, challenge_day)
-        if not signed_url:
-            raise RuntimeError("Signed URL missing from ElevenLabs response")
-        return {"signed_url": signed_url, "challenge_day": int(challenge_day)}
-    except Exception as exc:
-        logger.exception("Failed to generate signed URL for challenge_day=%s", challenge_day)
-        raise HTTPException(status_code=500, detail=f"Failed to generate signed URL: {exc}") from exc
-
-@app.post("/tool/log-goal")
-async def log_goal(day: int, completed: bool = True, authorization: Optional[str] = Header(None)):
-    # Optional bearer check
-    expected = os.getenv("TOOL_BEARER_TOKEN", "")
-    if expected:
-        token = (authorization or "").replace("Bearer ", "")
-        if token != expected:
-            raise HTTPException(status_code=401, detail="Invalid token")
-
-    log_data = {"day": day, "completed": completed, "timestamp": datetime.utcnow().isoformat()}
-    print("Goal logged:", log_data)
-    return {"success": True, "message": f"Day {day} logged", "data": log_data}
+@app.post('/tts/closing')
+def closing(day: Day):
+    """Closing text contract; audio synthesis is not implemented."""
+    return {'success': True, 'day': day,
+            'message': f'Day {day} complete. Thank you for making time for calm.',
+            'audio_url': None, 'audio_generated': False}

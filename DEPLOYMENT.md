@@ -1,3 +1,5 @@
+> Historical deployment notes. Use README.md for current configuration and docs/VERIFICATION.md for verified status. Previously recorded credentials have been removed and must be rotated.
+
 # Complete Deployment Guide
 
 **7 Days to Calm Meditation App**
@@ -685,7 +687,7 @@ Access-Control-Allow-Origin: https://YOUR_VERCEL_URL
 
 ```bash
 # Required
-ELEVENLABS_API_KEY=sk_xxxxxxxxxxxxxxxxxxxxx  # From ElevenLabs dashboard
+ELEVENLABS_API_KEY=REPLACE_WITH_ROTATED_API_KEY_SECRET  # From ElevenLabs dashboard
 ELEVENLABS_AGENT_ID=agent_4201k708pqxsed39y0vsz05gn66e  # Your agent ID
 
 # CORS Configuration

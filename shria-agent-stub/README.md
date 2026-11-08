@@ -1,88 +1,24 @@
-# Shria Agent – Stub Package
+# Optional Shria tool demo
 
-Generated: 2025-10-15T00:39:05.894576Z
+Production signing belongs to `../em-backend` (FastAPI). This Express package demonstrates tool handlers with an in-memory store.
 
-This repo provides a **minimal, production-style skeleton** for your mindfulness agent:
-- Tool handlers: `setChallengeDay`, `trackEvent`, `setReminder`
-- In-memory store with a clean interface you can swap for a DB later
-- Simple routing to map user intents to flows (2/5/8, presets, challenge)
-- Express server with endpoints so you can integration-test quickly
-- Vitest unit tests
-
-
-## Quick Start
-
-```bash
-# 1) Install
-npm install
-
-# 2) Run dev
+```powershell
+npm ci
+npm run build
+npx vitest run
 npm run dev
-
-# 3) Hit the sample endpoints in another shell
-curl -X POST http://localhost:4000/api/tools/setChallengeDay -H "Content-Type: application/json" -d '{"day":2}'
-curl -X POST http://localhost:4000/api/tools/trackEvent -H "Content-Type: application/json" -d '{"name":"em_day_complete","payload":{"day":1}}'
-curl -X POST http://localhost:4000/api/tools/setReminder -H "Content-Type: application/json" -d '{"time":"13:00","label":"7 Days to Calm"}'
-curl http://localhost:4000/convai/signed-url?challenge_day=1
 ```
 
-> Store is in-memory by default. Replace it with Redis/Postgres later by implementing the same interface in `src/store/store.ts` and switching the import in `src/server.ts`.
+`npm start` runs compiled ESM on port 4000. Set environment variables in the shell or hosting dashboard; this demo does not load `.env` automatically.
 
-## Webflow Embed Snippet
+`GET /convai/signed-url?challenge_day=1` forwards to `BACKEND_URL`, returning the real `signed_url` plus a compatibility `url` alias. Missing configuration returns 503. No fake tokens are generated.
 
-1. Deploy with `CORS_ALLOWLIST` set to your production domains.
-2. Add an Embed element in Webflow with:
-
-```html
-<div id="em-convai"></div>
-<script>
-  (function initEM(){
-    function ready(fn){document.readyState!=="loading"?fn():document.addEventListener("DOMContentLoaded",fn);}
-    ready(async()=>{
-      const host=document.querySelector("#em-convai");
-      if(!host){console.error("[EM] missing #em-convai");return;}
-      const res=await fetch("https://seven-days-to-calm.onrender.com/convai/signed-url?challenge_day=1",{credentials:"omit"});
-      if(!res.ok){console.error("[EM] signed-url error",res.status);return;}
-      const {ok,url}=await res.json();
-      if(!ok||!url){console.error("[EM] signed-url bad payload");return;}
-      const iframe=document.createElement("iframe");
-      iframe.src=`/widget.html?ws=${encodeURIComponent(url)}`;
-      iframe.style.cssText="width:360px;height:560px;border:0;border-radius:12px;";
-      host.appendChild(iframe);
-      console.log("[EM] widget ready");
-    });
-  })();
-</script>
+```powershell
+$env:BACKEND_URL='http://localhost:8787'
+$env:CORS_ALLOWLIST='http://localhost:3000,https://www.elevatedmovements.com,https://elevatedmovements.com'
+npm run dev
 ```
 
-Verify in the browser console:
+Allowed browser origins get CORS headers; disallowed origins receive 403. No-Origin requests such as PowerShell are supported. OPTIONS returns 204. CORS is not authentication. Tool endpoints under `/api/tools` are unauthenticated demo APIs.
 
-```js
-fetch("https://seven-days-to-calm.onrender.com/convai/signed-url?challenge_day=1")
-  .then(r => r.json())
-  .then(console.log);
-```
-
-You should see `{ ok: true, url, expiresAt, challenge_day: 1 }` and Render logs with no 500 errors.
-
-## Structure
-
-```
-src/
-  server.ts                # Express app wiring routes + tools
-  routes/sessionRouter.ts  # Intent → flow decision helper (stub)
-  tools/
-    setChallengeDay.ts
-    trackEvent.ts
-    setReminder.ts
-  store/
-    store.ts               # Store interface
-    memoryStore.ts         # Default in-memory store
-    types.ts               # Shared types
-  voice/
-    elevenlabsClient.ts    # Placeholder client (pseudo)
-  prompt/
-    system_prompt.txt      # Full integrated system prompt
-tests/
-  tools.test.ts
-```
+See the root README for Webflow embedding, ElevenLabs configuration, deployment, and verification commands.

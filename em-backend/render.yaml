@@ -12,8 +12,8 @@ services:
         value: 3.11.0
       - key: ELEVENLABS_API_KEY
         sync: false
-      - key: ELEVENLABS_AGENT_ID
+      - key: AGENT_ID
         sync: false
-      - key: CORS_ORIGINS
+      - key: CORS_ALLOWLIST
         sync: false
     healthCheckPath: /health

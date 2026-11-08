@@ -1,0 +1,44 @@
+# Verification — November 8, 2026
+
+## Implemented
+
+- Inline voice panel using the official ElevenLabs JavaScript SDK; no shadow-DOM styling or unsupported widget variant.
+- Fresh server-signed URL on Begin, microphone permission on user action, day/theme dynamic variables and contextual update, transcript, mute, end, cancel, error/retry, and session teardown on day changes/unmount.
+- Persistent challenge progress including final completion; reset and skip-to-today retained. Responsive progress labels no longer overflow narrow screens.
+- FastAPI uses the supported pinned SDK method; day validation, no-store responses, exact CORS, origin rejection before provider calls, controlled 503/502 responses with request IDs and safe diagnostics.
+- Restored closing-text contract. Goal logging bearer protection retained. No synthesized closing audio is claimed.
+- Render environment names aligned; legacy agent variable accepted during migration. One microphone policy. Framing enabled for Webflow embedding.
+- Express demo builds and forwards real signing; fake URL and nonexistent iframe-loader instructions removed.
+- Next.js moved from 14 to patched 15.5.29. PostCSS/glob/minimatch overrides resolve known transitive advisories; SDK pinned at 1.12.0. Frontend dependency audit reports zero vulnerabilities.
+- Removed credential-like values from two tracked deployment notes. Historical secrets still require provider-side rotation.
+
+## Evidence
+
+| Check | Result |
+| --- | --- |
+| Next.js production build | Pass: compilation, types, static generation |
+| FastAPI integration tests | 7 pass: SDK contract, missing configuration, legacy alias, sanitized provider errors, day validation, CORS/origin rejection, goal auth and closing |
+| Express build | Pass |
+| Express tests | 6 pass: tool handlers, preflight/origin rejection, configuration/day validation, signing forwarding |
+| Playwright Chromium | 4 pass: visible inline guide/mobile sizing, progress through Day 7 and reload/reset, signing retry, real SDK protocol/context/transcript/mute/end against mocked provider, microphone-denied recovery |
+| Frontend npm audit | Zero reported vulnerabilities |
+| Local FastAPI startup and health | Pass: HTTP 200; required variables present |
+| Local production page and favicon | HTTP 200; microphone policy present; no X-Frame-Options blocking Webflow |
+| Live Render health | HTTP 200, existing deployed version |
+| Live Vercel challenge page | HTTP 200, existing deployed version |
+| Real ElevenLabs signing with local credential | Blocked: HTTP 400 `invalid_api_key`; provider status `api_key_id_used_as_api_key` |
+
+The browser protocol test uses the actual SDK with a mocked provider WebSocket and synthetic microphone. It proves initiation payloads and controls, not real provider speech quality or remote prompt behavior. Screenshots are generated at `em-frontend/test-results/inline-guide-mobile.png`.
+
+## External release gates
+
+1. Replace `ELEVENLABS_API_KEY` in the local backend `.env` and Render with a newly issued API key **secret**, not its ID. Never paste secrets into chat. Rotate any previously exposed key.
+2. Configure Shria's first message/system prompt to use `challenge_day`, `challenge_title`, and `challenge_name`; verify agent authentication, allowed domains, key permissions, and client tool schemas.
+3. Deploy the committed backend/frontend changes and rebuild Vercel with the actual Render URL. This local build does not update hosted services.
+4. Perform a real HTTPS microphone session on the deployed page and inside Webflow. Confirm the spoken day and complete daily guidance. Publishing the supplied iframe snippet in Webflow remains an external action.
+
+## Primary references
+
+- [ElevenLabs JavaScript SDK](https://elevenlabs.io/docs/eleven-agents/libraries/java-script)
+- [Widget variant parser](https://github.com/elevenlabs/packages/blob/main/packages/convai-widget-core/src/types/config.ts)
+- [Widget overlay wrapper](https://github.com/elevenlabs/packages/blob/main/packages/convai-widget-core/src/widget/Wrapper.tsx)

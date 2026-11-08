@@ -56,3 +56,10 @@ htmlcov/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Nested generated artifacts
+**/dist/
+**/.next/
+**/test-results/
+**/playwright-report/
+.env.production
