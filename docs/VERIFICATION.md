@@ -24,7 +24,7 @@
 | Frontend npm audit | Zero reported vulnerabilities |
 | Local FastAPI startup and health | Pass: HTTP 200; required variables present |
 | Local production page and favicon | HTTP 200; microphone policy present; no X-Frame-Options blocking Webflow |
-| Live Render health | HTTP 200, existing deployed version |
+| Live Render health | HTTP 200 after credential deployment |
 | Live Vercel challenge page | HTTP 200, existing deployed version |
 | Real ElevenLabs signing with replacement local credential | Pass: HTTP 200; signed WebSocket URL present for Days 1 and 3 |
 
@@ -32,7 +32,7 @@ The browser protocol test uses the actual SDK with a mocked provider WebSocket a
 
 ## External release gates
 
-1. Local credential is replaced and verified. Update Render with the same key after signing in; the Render dashboard is currently at its login page. Never paste secrets into chat. Rotate any previously exposed old key.
+1. Local and Render credentials are replaced and real signing is verified. Rotate any previously exposed old keys; the new secret is not committed.
 2. Configure Shria's first message/system prompt to use `challenge_day`, `challenge_title`, and `challenge_name`; verify agent authentication, allowed domains, key permissions, and client tool schemas.
 3. Deploy the committed backend/frontend changes and rebuild Vercel with the actual Render URL. This local build does not update hosted services.
 4. Perform a real HTTPS microphone session on the deployed page and inside Webflow. Confirm the spoken day and complete daily guidance. Publishing the supplied iframe snippet in Webflow remains an external action.
@@ -45,4 +45,16 @@ The browser protocol test uses the actual SDK with a mocked provider WebSocket a
 
 ## Credential repair follow-up
 
-Created the approved restricted key and stored its secret only in the ignored local backend `.env`. ElevenLabs requires ElevenAgents Write (`convai_write`) for GET signed URL issuance; Read alone returned `missing_permissions`. Write was separately approved and saved; all other categories remain disabled. Restarted the local API and verified real HTTP 200 signing. The local secret is not committed. Render remains unchanged pending user login. Read-only inspection also confirmed the existing shared agent prompt and first message do not reference `challenge_day`; no remote prompt changes were made.
+Created the approved restricted key and stored its secret only in the ignored local backend `.env`. ElevenLabs requires ElevenAgents Write (`convai_write`) for GET signed URL issuance; Read alone returned `missing_permissions`. Write was separately approved and saved; all other categories remain disabled. Restarted the local API and verified real HTTP 200 signing. The local secret is not committed. Render now stores the same verified secret and has deployed it successfully. Read-only inspection also confirmed the existing shared agent prompt and first message do not reference `challenge_day`; no remote prompt changes were made.
+
+## Production credential deployment verified
+
+The replacement key was saved in Render service `7-days-to-calm` (`srv-d3mth5u3jp1c73d2jqng`). After correcting the form input and verifying the persisted value matched the local secret without printing it, environment deployment `dep-dboeun15efls73dm34kg` succeeded.
+
+Verified against https://seven-days-to-calm.onrender.com:
+
+- GET `/health`: 200.
+- OPTIONS `/convai/signed-url` with Origin `https://7-days-to-calm.vercel.app`: 200 and matching Access-Control-Allow-Origin.
+- GET `/convai/signed-url?challenge_day=1` with the same Origin: 200, nonempty signed URL, matching CORS header. The URL itself was not logged.
+
+This credential-only deployment reuses source commit `ed38f24`. The newer local SDK interface and backend cleanup commits are still not published. Real spoken day guidance remains a separate release check.
