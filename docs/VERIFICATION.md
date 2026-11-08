@@ -26,13 +26,13 @@
 | Local production page and favicon | HTTP 200; microphone policy present; no X-Frame-Options blocking Webflow |
 | Live Render health | HTTP 200, existing deployed version |
 | Live Vercel challenge page | HTTP 200, existing deployed version |
-| Real ElevenLabs signing with local credential | Blocked: HTTP 400 `invalid_api_key`; provider status `api_key_id_used_as_api_key` |
+| Real ElevenLabs signing with replacement local credential | Pass: HTTP 200; signed WebSocket URL present for Days 1 and 3 |
 
 The browser protocol test uses the actual SDK with a mocked provider WebSocket and synthetic microphone. It proves initiation payloads and controls, not real provider speech quality or remote prompt behavior. Screenshots are generated at `em-frontend/test-results/inline-guide-mobile.png`.
 
 ## External release gates
 
-1. Replace `ELEVENLABS_API_KEY` in the local backend `.env` and Render with a newly issued API key **secret**, not its ID. Never paste secrets into chat. Rotate any previously exposed key.
+1. Local credential is replaced and verified. Update Render with the same key after signing in; the Render dashboard is currently at its login page. Never paste secrets into chat. Rotate any previously exposed old key.
 2. Configure Shria's first message/system prompt to use `challenge_day`, `challenge_title`, and `challenge_name`; verify agent authentication, allowed domains, key permissions, and client tool schemas.
 3. Deploy the committed backend/frontend changes and rebuild Vercel with the actual Render URL. This local build does not update hosted services.
 4. Perform a real HTTPS microphone session on the deployed page and inside Webflow. Confirm the spoken day and complete daily guidance. Publishing the supplied iframe snippet in Webflow remains an external action.
@@ -42,3 +42,7 @@ The browser protocol test uses the actual SDK with a mocked provider WebSocket a
 - [ElevenLabs JavaScript SDK](https://elevenlabs.io/docs/eleven-agents/libraries/java-script)
 - [Widget variant parser](https://github.com/elevenlabs/packages/blob/main/packages/convai-widget-core/src/types/config.ts)
 - [Widget overlay wrapper](https://github.com/elevenlabs/packages/blob/main/packages/convai-widget-core/src/widget/Wrapper.tsx)
+
+## Credential repair follow-up
+
+Created the approved restricted key and stored its secret only in the ignored local backend `.env`. ElevenLabs requires ElevenAgents Write (`convai_write`) for GET signed URL issuance; Read alone returned `missing_permissions`. Write was separately approved and saved; all other categories remain disabled. Restarted the local API and verified real HTTP 200 signing. The local secret is not committed. Render remains unchanged pending user login. Read-only inspection also confirmed the existing shared agent prompt and first message do not reference `challenge_day`; no remote prompt changes were made.

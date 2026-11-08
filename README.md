@@ -50,7 +50,7 @@ CORS is a browser control, not user authentication or a quota limit. Add user au
 
 ## ElevenLabs agent configuration
 
-Enable authentication on Shria and allow your app domains. Grant the server key access to the agent. Configure these variables in the system prompt:
+Enable authentication on Shria and allow your app domains. Grant the server key ElevenAgents Write (`convai_write`) access; the signed URL endpoint requires Write even though it uses GET. Keep unrelated API categories disabled. Configure these variables in the system prompt:
 
 ```text
 You are Shria, the Elevated Movements mindfulness guide.
