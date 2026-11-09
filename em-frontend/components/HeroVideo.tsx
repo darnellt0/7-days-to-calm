@@ -74,8 +74,8 @@ export default function HeroVideo({ enabled, allowed, sessionActive }: {
       width={960} height={640} muted loop playsInline preload="none" aria-hidden="true" tabIndex={-1}
       onPlaying={() => { setHasFrame(true); setBlocked(false); }}
       onError={event => { if (event.target === event.currentTarget) { setFailed(true); setHasFrame(false); } }}>
-      <source src="/video/portal-loop-v2.mp4" type="video/mp4" onError={() => sourceFailed("mp4")} />
-      <source src="/video/portal-loop-v2.webm" type="video/webm" onError={() => sourceFailed("webm")} />
+      <source src="/video/portal-loop-v3.mp4" type="video/mp4" onError={() => sourceFailed("mp4")} />
+      <source src="/video/portal-loop-v3.webm" type="video/webm" onError={() => sourceFailed("webm")} />
     </video>}
     {blocked && canPlay && <button className="button button-primary hero-video-start" onClick={retryPlayback}>Play video</button>}
   </div>;

@@ -94,3 +94,8 @@ Final production build and ten browser tests pass. Because OneDrive intermittent
 User feedback requested a more visibly living scene. Rendered the versioned v2 assets with larger water displacement, broader/faster ripples, moving warm reflection bands and stronger highlights, while protecting the solid portal and horizon. Both retain ten-second silent playback at 960×640/25fps; MP4 is 1,183,267 bytes and WebM is 681,529 bytes. All 250 MP4 frames decode and periodic source endpoints match exactly.
 
 Compared old/new video frames at a 550×367 hero-sized render. Mean adjacent-frame water pixel change over the first two seconds increased from 0.772 to 2.098 on a 0–255 channel scale. This supports the increased rendered motion; it is not a subjective user-acceptance score. Inspected comparison frames for geometry and reflection placement. Production build and all ten browser regressions pass against matching isolated app inputs, including real v2 WebM fallback.
+
+
+## Virgil natural-water v3
+
+Production build and ten browser tests pass against isolated matching app inputs, including real v3 WebM fallback. Both final formats decode 250 frames; periodic raw endpoints are identical. Virgil performed three frame/source reviews and his concrete refinements are implemented. His scoped final verdict and encoded seam measurements are recorded in VIRGIL-WATER-REVIEW.md. Continuous-playback visual approval and subjective user acceptance are not inferred from frame review or automated tests.

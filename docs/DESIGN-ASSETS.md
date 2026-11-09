@@ -9,3 +9,6 @@ Prompt: Premium mindfulness web app landscape artwork, 3:2. Still luminous laven
 Video: `em-frontend/public/video/portal-loop.mp4` and `.webm`, rendered from the above artwork by `scripts/render-hero-loop.py`. Ten-second silent looping cinemagraph, with actual water displacement and moving reflection highlights rather than the initial CSS zoom. Source artwork is preserved as the poster/fallback. No additional asset-service quota or third-party footage is involved.
 
 The current stronger-motion assets are `portal-loop-v2.mp4` and `portal-loop-v2.webm`. The renderer now produces v2: larger water displacement, moving warm reflections, stronger highlights, and a mask protecting the physical portal. Versioned filenames avoid stale media caches; the original files remain for comparison.
+
+
+Current assets: portal-loop-v3.mp4 (2,282,174 bytes) and portal-loop-v3.webm (3,412,318 bytes). The renderer now produces v3: perspective-scaled traveling waves and shared surface-driven reflection facets, a fixed sun reflection envelope, and feathered physical-portal masks. Independently encoded H.264/VP9, ten seconds, 960x640/25fps, silent. Earlier assets are retained for comparison. See VIRGIL-WATER-REVIEW.md.
