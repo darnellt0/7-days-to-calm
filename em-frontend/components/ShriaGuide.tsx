@@ -90,7 +90,12 @@ export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) 
       const pending = Conversation.startSession({
         signedUrl: data.signed_url,
         connectionType: "websocket",
-        dynamicVariables: { challenge_day: day, challenge_title: title, challenge_name: "7 Days to Calm" },
+        dynamicVariables: {
+          challenge_day: day,
+          challenge_title: title,
+          challenge_name: "7 Days to Calm",
+          session_greeting: `Welcome to Day ${day} of 7 Days to Calm: ${title}. I'm Shria. Would a two, five, or eight minute practice feel good right now?`,
+        },
         clientTools: {
           getChallengeDay: () => JSON.stringify({ day }),
           setChallengeDay: ({ day: value }: { day: number }) => JSON.stringify({ day: onDayChange(value) }),

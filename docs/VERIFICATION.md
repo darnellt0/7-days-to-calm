@@ -33,7 +33,7 @@ The browser protocol test uses the actual SDK with a mocked provider WebSocket a
 ## External release gates
 
 1. Local and Render credentials are replaced and real signing is verified. Rotate any previously exposed old keys; the new secret is not committed.
-2. Configure Shria's first message/system prompt to use `challenge_day`, `challenge_title`, and `challenge_name`; verify agent authentication, allowed domains, key permissions, and client tool schemas.
+2. Challenge guidance and the default-safe `session_greeting` template are applied. A real signed WebSocket session returned the expected Day 3 / Body Scan greeting. Client tools require matching agent schemas if used.
 3. Deploy the committed backend/frontend changes and rebuild Vercel with the actual Render URL. This local build does not update hosted services.
 4. Perform a real HTTPS microphone session on the deployed page and inside Webflow. Confirm the spoken day and complete daily guidance. Publishing the supplied iframe snippet in Webflow remains an external action.
 
@@ -58,3 +58,7 @@ Verified against https://seven-days-to-calm.onrender.com:
 - GET `/convai/signed-url?challenge_day=1` with the same Origin: 200, nonempty signed URL, matching CORS header. The URL itself was not logged.
 
 This credential-only deployment reuses source commit `ed38f24`. The newer local SDK interface and backend cleanup commits are still not published. Real spoken day guidance remains a separate release check.
+
+## Final release candidate (2026-11-08)
+
+Rebased the repair onto current production main `7625c25`, preserving the Day 7 MenoPause Reset banner and funnel links. Next.js production build and four browser tests pass on the merged release. Added idempotent agent configuration with an ignored backup of affected fields; preserved the shared agent's existing prompt and general greeting. A real provider session confirmed its first response names Day 3 and Body Scan. The browser tests use a synthetic microphone and mocked socket; a human audio check on HTTPS remains necessary.

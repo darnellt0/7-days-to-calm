@@ -60,7 +60,7 @@ Day 1 Arrive; Day 2 Longer Exhale; Day 3 Body Scan; Day 4 Label Thoughts;
 Day 5 Box Breathing; Day 6 Open Awareness; Day 7 Integration.
 ```
 
-Set a first message using `{{challenge_day}}` and `{{challenge_title}}`. The client sends variables at session initiation and a contextual update after connection. No prompt override permission is needed. Remote agent configuration is not changed by building this repo.
+Run `em-backend/venv/Scripts/python.exe scripts/configure-shria.py` on Windows (or `em-backend/venv/bin/python scripts/configure-shria.py` on macOS/Linux) to apply the challenge guidance. This idempotent script preserves the existing coaching prompt, backs up affected fields in ignored `.local/`, and sets the first message to `{{session_greeting}}`. Its default preserves the original greeting for other apps. The client supplies a day-specific greeting and variables at session initiation, then sends a contextual update after connection. No prompt override permission is needed. Building the repo alone does not change the remote agent.
 
 Supported client tools: `getChallengeDay`, `setChallengeDay` (day integer 1–7), `trackEvent` (name/payload), `setReminder` (time/label), `openLink` (HTTPS URL). Configure matching tool schemas in ElevenLabs if your prompt uses them.
 
