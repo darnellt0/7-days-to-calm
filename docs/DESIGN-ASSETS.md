@@ -1,14 +1,16 @@
 # Design assets
 
-## Current header logo: larger, directly on light — November 9, 2026
+## Current header logo: original smaller scale, directly on light — November 9, 2026
 
 `em-frontend/public/images/elevated-movements-logo-on-light.png` is the official brand-kit primary asset, originally named `Elevated Movements Horizontal Logo CMYK Full Color trademark.png`: 471×141 RGBA, 22,291 bytes; SHA256 `c91ea7e408e062fb89c11c29be1ac7944979825301628912b336014e75ca0e35`. The main brand-kit and Marcus copies match. This is existing dark-lettering artwork with its original tree, wordmark and tagline, not an edited/inverted/generated version of the white logo.
 
-The user requested a more visible logo without extra header whitespace. It now renders at 252px desktop, 210px phone and 184px narrow-phone width, up from 210/180/156px. Removed the navy backing and vertical header padding; the complete asset retains its proportions directly on the light background. Desktop header remains 76px; phone checks require at most 80px. Home link/accessibility, readable text, accepted hero gap and quiet media control remain intact.
+The user accepted this light-background variant but subsequently preferred the original smaller scale. It now renders at 210px desktop, 180px phone and 156px narrow-phone width; the temporary 252/210/184px enlargement is superseded. The navy backing and extra vertical header padding remain removed; the complete asset retains its proportions directly on the light background. Desktop header remains approximately 76px; phone checks require at most 80px. Home link/accessibility, readable text, accepted hero gap and quiet media control remain intact.
 
 Ive and Kare reviewed the source-bound candidate, original artwork and screenshots at 1440/1920 and 390/320; both READY, no must-fix. Build `zNzks53xVujrcw6jVnecm` and all eleven operator browser checks pass (30.5s), including actual logo loading, 471:141 proportions, increased widths, transparent backing, header-height limits, phone overflow and existing regressions. Their review was static image/source inspection, not agent-executed tests or human audio assessment.
 
 Lesson: check official brand-kit variants before inventing a backing for a white-only logo. Choose the appropriate supplied variant for the background, preserve the artwork and compensate padding when increasing its size. The earlier white-lettering asset remains available but is no longer used in the header.
+
+Smaller-size restoration: production build `x1vGosgjLqfly-FjugJgH` and the focused desktop/mobile layout check passed (1 passed, 12.2s). The check pins the requested 210/180/156px widths and verifies loading/proportions, transparent backing, header limits, overflow, accepted hero gap, motion-control clearance, keyboard practice access and long-title/completion states. The full eleven-check run above belongs to the preceding larger-logo revision; it was not repeated for this size-only change. Ive and Kare inspected all four matching desktop/mobile screenshots and source, returned READY with no must-fix, and read back the saved preference. Their active checklists/project records now distinguish accepted asset/background treatment from the superseded size choice.
 
 ## Previous white-lettering header logo — November 9, 2026
 
