@@ -233,7 +233,7 @@ body { font-size: var(--text-body); }
 
 /* Ambient motion stays behind the interface, and is independently pausable. */
 .hero-art img { animation: portal-breathe 24s ease-in-out infinite; }
-.motion-control { position: absolute; z-index: 4; top: 18px; right: 18px; display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 10px 14px; border: 1px solid #ffffff66; border-radius: 999px; background: #171a38e6; color: white; font-size: 14px; line-height: 1.4; }
+.motion-control { position: absolute; z-index: 4; top: 18px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 10px 14px; border: 1px solid #ffffff66; border-radius: 999px; background: #171a38e6; color: white; font-size: 14px; line-height: 1.4; }
 .motion-control:hover:not(:disabled) { background: #343262; }
 .motion-control:disabled { cursor: default; }
 .motion-control:focus-visible { outline-color: white; outline-offset: 4px; }

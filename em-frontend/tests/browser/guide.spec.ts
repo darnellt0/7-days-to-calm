@@ -127,6 +127,13 @@ test('new visual identity loads artwork and fits desktop and narrow mobile', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(page.locator('.mobile-current-day')).toContainText('Day 1 of 7');
   await expect(page.locator('.mobile-current-day')).toContainText('Arrive');
+  await page.locator('.motion-control').scrollIntoViewIfNeeded();
+  expect(await page.locator('.motion-control').evaluate(el => {
+    const r = el.getBoundingClientRect();
+    // Sample inside the button's own pill corners, not its transparent outer pixels.
+    return [[r.left + 12, r.top + 12], [r.right - 12, r.top + 12], [r.left + 12, r.bottom - 12], [r.right - 12, r.bottom - 12]]
+      .every(([x, y]) => document.elementFromPoint(x, y)?.closest('button') === el);
+  })).toBe(true);
   await page.screenshot({ path: 'test-results/design-mobile.png', fullPage: true });
   await page.getByRole('link', { name: 'Go to your practice' }).focus();
   await page.keyboard.press('Enter');
