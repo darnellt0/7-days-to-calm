@@ -12,6 +12,9 @@
   --coral: #ff977e;
   --paper: #f8f7fc;
   --line: #deddeb;
+  --text-body: 18px;
+  --text-support: 16px;
+  --text-label: 14px;
 }
 
 * { box-sizing: border-box; }
@@ -205,15 +208,25 @@ h1, h2, h3, p { margin: 0; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* OpenClaw design review: comfortable functional type, without shrinking on phones. */
-.practice-description { font-size: 17px; }
-.gentle-note, .guide-invitation, .session-status { font-size: 16px; line-height: 1.6; }
-.microphone-note { font-size: 16px; line-height: 1.5; }
-.button { font-size: 16px; max-width: 100%; }
-.journey-caption { flex-wrap: wrap; font-size: 14px; }
-.intro-details, .progress-tools, .site-footer { font-size: 14px; }
-.header-note { font-size: 12px; }
-.practice-footer p, .practice-footer .footer-title { font-size: 15px; }
-.guide-label, .voice-credit, .practice-details span { font-size: 12px; }
-.intro-start { gap: 12px; padding: 6px 14px; margin-left: -14px; font-size: 16px; border-radius: 8px; }
+/* Readability scale: preserve these minimums at narrow breakpoints too. */
+body { font-size: var(--text-body); }
+.challenge-intro .intro-copy > p:not(.eyebrow) { font-size: 20px; line-height: 1.7; }
+.practice-description, .gentle-note, .guide-invitation, .session-status { font-size: var(--text-body); line-height: 1.6; }
+.microphone-note { font-size: var(--text-body); line-height: 1.5; }
+.button { font-size: var(--text-body); max-width: 100%; }
+.journey-caption { flex-wrap: wrap; font-size: var(--text-support); }
+.intro-details, .progress-tools, .site-footer, .brand, .header-note { font-size: var(--text-support); }
+.practice-footer p, .practice-footer .footer-title { font-size: var(--text-body); }
+.guide-label, .voice-credit, .practice-details span, .eyebrow, .day-title, .day-number { font-size: var(--text-label); }
+.guide-day { font-size: var(--text-body); }
+.shria-guide h3 { font-size: 32px; }
+.intention-note p { font-size: 24px; line-height: 1.6; }
+.conversation-transcript p, .calm-dialog > p:not(.eyebrow), .voice-error, .storage-note { font-size: var(--text-body); }
+.conversation-transcript strong, .calm-toast, .next-chapter .offer-detail, .member-link { font-size: var(--text-support) !important; }
+.next-chapter > p:not(.eyebrow) { font-size: var(--text-body); }
+.intro-start { gap: 12px; padding: 6px 14px; margin-left: -14px; font-size: var(--text-body); border-radius: 8px; }
 .intro-start:hover { background: var(--lavender); }
+@media (max-width: 760px) {
+  .mobile-current-day { font-size: 20px; }
+  .day-number { flex-basis: 30px; width: 30px; min-width: 30px; height: 30px; }
+}
