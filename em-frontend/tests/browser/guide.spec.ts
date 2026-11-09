@@ -21,6 +21,10 @@ test('practice-first layout preserves readable type and a direct start path acro
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/7-days-to-calm');
   await expect(page.locator('.hero-video.has-frame')).toBeVisible();
+  const logo = page.getByRole('img', { name: 'Elevated Movements', exact: true });
+  await expect.poll(() => logo.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  await expect(page.getByRole('link', { name: 'Elevated Movements home' })).toHaveAttribute('href', 'https://www.elevatedmovements.com');
+  expect(await logo.evaluate(el => el.getBoundingClientRect().width / el.getBoundingClientRect().height)).toBeCloseTo(460 / 96, 1);
   for (const width of [1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
     // Measure visible headline text, not its wider block box: this is the gap users see.
