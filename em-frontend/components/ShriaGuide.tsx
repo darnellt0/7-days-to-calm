@@ -6,13 +6,13 @@ import type { Conversation } from "@elevenlabs/client";
 interface Props {
   day: number;
   title: string;
-  onDayChange: (day: number) => number;
+  onActiveChange: (active: boolean) => void;
   onEvent: (name: string, payload?: Record<string, unknown>) => void;
 }
 
 type Session = Awaited<ReturnType<typeof Conversation.startSession>>;
 
-export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) {
+export default function ShriaGuide({ day, title, onActiveChange, onEvent }: Props) {
   const session = useRef<Session | null>(null);
   const generation = useRef(0);
   const starting = useRef(false);
@@ -23,6 +23,22 @@ export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) 
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<{ source: string; text: string }[]>([]);
+  const [elapsed, setElapsed] = useState(0);
+  const transcript = useRef<HTMLDivElement>(null);
+  const followTranscript = useRef(true);
+
+  useEffect(() => { onActiveChange(busy || connected); }, [busy, connected, onActiveChange]);
+  useEffect(() => {
+    if (!connected) return;
+    const start = Date.now();
+    setElapsed(0);
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [connected]);
+  useEffect(() => {
+    const element = transcript.current;
+    if (element && followTranscript.current) element.scrollTop = element.scrollHeight;
+  }, [messages]);
 
   useEffect(() => {
     console.log("[EM] widget ready");
@@ -42,6 +58,7 @@ export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) 
     const active = session.current;
     session.current = null;
     try { await active?.endSession(); }
+    catch { setError("The connection closed unexpectedly. You can begin again."); }
     finally {
       setConnected(false); setBusy(false); setMuted(false);
       setStatus("Practice ended. You can begin again.");
@@ -54,7 +71,7 @@ export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) 
     starting.current = true;
     const attempt = ++generation.current;
     const current = () => attempt === generation.current;
-    setBusy(true); setError(""); setMessages([]); setStatus("Allow microphone access to begin");
+    setBusy(true); setError(""); setMessages([]); setElapsed(0); followTranscript.current = true; setStatus("Allow microphone access to begin");
     const controller = new AbortController();
     request.current = controller;
     let connectionTimer: ReturnType<typeof setTimeout> | undefined;
@@ -98,7 +115,7 @@ export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) 
         },
         clientTools: {
           getChallengeDay: () => JSON.stringify({ day }),
-          setChallengeDay: ({ day: value }: { day: number }) => JSON.stringify({ day: onDayChange(value) }),
+          setChallengeDay: () => JSON.stringify({ day, changed: false, message: "End the call, then use the page controls to change days." }),
           trackEvent: ({ name, payload }: { name?: string; payload?: Record<string, unknown> }) => {
             onEvent(name || "em_custom", payload || {}); return "ok";
           },
@@ -158,20 +175,21 @@ export default function ShriaGuide({ day, title, onDayChange, onEvent }: Props) 
   }
 
   return (
-    <section id="shria-widget-container" aria-label="Shria voice guide" className="w-full my-8 rounded-2xl border border-teal-100 bg-teal-50 p-6 flex flex-col items-center justify-center gap-5" style={{ minHeight: 420 }}>
-      <div aria-hidden="true" className="w-24 h-24 rounded-full bg-gradient-to-br from-teal-700 to-yellow-200 shadow-lg" />
-      <h3 className="text-2xl font-semibold text-teal-900">Practice with Shria</h3>
-      <p className="text-center text-gray-700">Day {day}: {title}. Choose 2, 5, or 8 minutes when you begin.</p>
-      <p className="text-sm text-gray-600">Your microphone is used during the call. Press End whenever you like.</p>
-      <p role="status" aria-live="polite">{status}</p>
-      {error && <p role="alert" className="text-red-700 text-center">{error}</p>}
-      <div className="flex gap-3">
-        {!connected && !busy && <button onClick={start} className="px-6 py-3 rounded-lg bg-teal-700 text-white">{error ? "Try again" : "Begin practice"}</button>}
-        {connected && <button onClick={() => { const next = !muted; session.current?.setMicMuted(next); setMuted(next); }} aria-pressed={muted} className="px-4 py-3 rounded-lg border border-teal-700">{muted ? "Unmute" : "Mute"}</button>}
-        {(connected || busy) && <button onClick={stop} className="px-6 py-3 rounded-lg bg-gray-800 text-white">{busy ? "Cancel" : "End"}</button>}
+    <section id="shria-widget-container" aria-label="Shria voice guide" className="shria-guide" data-state={busy ? "connecting" : connected ? (muted ? "muted" : status === "Shria is speaking" ? "speaking" : "listening") : "idle"}>
+      <span className="guide-label">Your mindfulness companion</span>
+      <div className="shria-orbit" aria-hidden="true"><span className="orbit-ring" /><span className="orbit-core" /><span className="orbit-spark" /></div>
+      <h3>Practice with Shria</h3>
+      <p className="guide-invitation">A familiar voice. A moment to reconnect.<br />Tell Shria how much time you have.</p>
+      <div className="session-status"><span className="status-dot" aria-hidden="true" /><p role="status" aria-live="polite">{connected && muted ? "Microphone muted · you can still listen" : status}</p>{connected && <time aria-label="Session duration">{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}</time>}</div>
+      {error && <p role="alert" className="voice-error">{error}</p>}
+      <div className="voice-controls">
+        {!connected && !busy && <button onClick={start} className="button button-primary">{error ? "Try again" : "Begin practice"}<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="9" y="3" width="6" height="12" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8" /></svg></button>}
+        {connected && <button onClick={() => { const next = !muted; session.current?.setMicMuted(next); setMuted(next); }} aria-pressed={muted} className="button button-secondary">{muted ? "Unmute" : "Mute"}</button>}
+        {(connected || busy) && <button onClick={stop} className="button button-primary">{busy ? "Cancel" : "End"}</button>}
       </div>
-      {messages.length > 0 && <div role="log" aria-label="Conversation transcript" className="w-full max-h-56 overflow-y-auto bg-white rounded-lg p-4 space-y-2">{messages.map((item, i) => <p key={i}><strong>{item.source === "ai" ? "Shria" : "You"}:</strong> {item.text}</p>)}</div>}
-      <p className="text-xs text-gray-500">Voice powered by ElevenLabs</p>
+      <p className="microphone-note">Microphone on only during your call.<br />You can end whenever you like.</p>
+      {messages.length > 0 && <div ref={transcript} role="log" aria-label="Conversation transcript" tabIndex={0} onScroll={event => { const el = event.currentTarget; followTranscript.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48; }} className="conversation-transcript">{messages.map((item, i) => <p key={i}><strong>{item.source === "ai" ? "Shria" : "You"}</strong>{item.text}</p>)}</div>}
+      <p className="voice-credit">Voice powered by ElevenLabs</p>
     </section>
   );
 }

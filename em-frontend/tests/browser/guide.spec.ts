@@ -12,15 +12,15 @@ test('inline guide is visible without signing; progress persists and resets', as
   expect(box!.height).toBeGreaterThanOrEqual(420);
   expect(requests).toBe(0);
   for (let day = 1; day <= 7; day++) await page.getByRole('button', { name: `Complete Day ${day}`, exact: true }).click();
-  await expect(page.getByText('Seven days complete.', { exact: false })).toBeVisible();
+  await expect(page.locator('.footer-title')).toContainText('Seven days complete.');
   await page.reload();
-  await expect(page.getByText('Seven days complete.', { exact: false })).toBeVisible();
+  await expect(page.locator('.footer-title')).toContainText('Seven days complete.');
   await page.getByRole('button', { name: 'Reset to Day 1' }).click();
   await page.getByRole('button', { name: 'Reset Progress', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Day 1: Arrive' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(guide.getByRole('button', { name: 'Begin practice' })).toBeVisible();
-  await expect(page.getByText('Progress reset successfully!')).toBeHidden();
+  await expect(page.getByText('Progress reset successfully!')).toBeHidden({ timeout: 8000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'test-results/inline-guide-mobile.png', fullPage: true });
 });
@@ -61,15 +61,67 @@ test('real SDK sends day context, displays transcript, mutes and ends (provider 
   await page.goto('/7-days-to-calm');
   await page.getByRole('button', { name: 'Begin practice' }).click();
   await expect(page.getByRole('button', { name: 'End', exact: true })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole('button', { name: 'Complete Day 3', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Reset to Day 1' })).toBeDisabled();
+  await expect(page.getByLabel('Session duration')).toBeVisible();
   expect(events.find(event => event.type === 'conversation_initiation_client_data')?.dynamic_variables).toMatchObject({ challenge_day: 3, challenge_title: 'Body Scan' });
   await expect(page.getByRole('log')).toContainText('Welcome to Day 3');
+  await page.screenshot({ path: 'test-results/design-active-session.png', fullPage: true });
   await page.getByRole('button', { name: 'Mute', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unmute' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('status').filter({ hasText: 'Microphone muted' })).toBeVisible();
   await page.getByRole('button', { name: 'End', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Begin practice' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Complete Day 3', exact: true })).toBeEnabled();
   expect(errors).toEqual([]);
   expect(logs.some(message => message.includes('[EM] widget ready'))).toBe(true);
   expect(logs.some(message => message.includes('[EM] got signed url for day'))).toBe(true);
+});
+
+test('keyboard dialogs restore focus, and skip uses the correct notification', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('em_challenge_start', new Date(Date.now() - 2 * 86400000).toISOString()));
+  await page.goto('/7-days-to-calm');
+  const reset = page.getByRole('button', { name: 'Reset to Day 1' });
+  await reset.click();
+  const dialog = page.getByRole('dialog', { name: 'Reset Progress?' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(reset).toBeFocused();
+  await page.getByRole('button', { name: 'Skip to Today' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Skip to Day 3' }).click();
+  await expect(page.getByRole('heading', { name: 'Day 3: Body Scan' })).toBeVisible();
+  await expect(page.getByText('Moved to Day 3. Your practice is ready.')).toBeVisible();
+});
+
+test('blocked browser storage does not prevent practice or day completion', async ({ page }) => {
+  await page.addInitScript(() => {
+    Storage.prototype.getItem = () => { throw new DOMException('blocked', 'SecurityError'); };
+    Storage.prototype.setItem = () => { throw new DOMException('blocked', 'SecurityError'); };
+  });
+  await page.goto('/7-days-to-calm');
+  await expect(page.getByText('Your browser isn’t saving progress.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Complete Day 1', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Day 2: Longer Exhale' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Begin practice' })).toBeVisible();
+});
+
+test('new visual identity loads artwork and fits desktop and narrow mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/7-days-to-calm');
+  const image = page.getByRole('img', { name: /luminous violet glass portal/ });
+  await expect(image).toBeVisible();
+  await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0');
+  await page.screenshot({ path: 'test-results/design-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/design-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect(await page.locator('.orbit-core').evaluate(el => getComputedStyle(el).animationName)).toBe('none');
 });
 
 test('microphone denial explains recovery without fetching credentials', async ({ page }) => {
