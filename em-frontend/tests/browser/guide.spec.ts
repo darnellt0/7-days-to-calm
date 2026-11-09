@@ -4,6 +4,19 @@ test('practice-first layout preserves readable type and a direct start path acro
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/7-days-to-calm');
   await expect(page.locator('.hero-video.has-frame')).toBeVisible();
+  for (const width of [1440, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    // Measure visible headline text, not its wider block box: this is the gap users see.
+    const headlineGap = await page.evaluate(() => {
+      const range = document.createRange();
+      range.selectNodeContents(document.querySelector('.challenge-intro h1')!);
+      return document.querySelector('.hero-art')!.getBoundingClientRect().left - range.getBoundingClientRect().right;
+    });
+    expect(headlineGap).toBeGreaterThanOrEqual(24);
+    expect(headlineGap).toBeLessThanOrEqual(96);
+    await page.screenshot({ path: `test-results/hero-spacing-${width}.png` });
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const entry = page.getByRole('link', { name: 'Go to your practice' });
   const begin = page.getByRole('button', { name: 'Begin practice' });
   expect(await entry.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);

@@ -39,7 +39,7 @@ h1, h2, h3, p { margin: 0; }
 .brand-mark > span { color: var(--violet-deep); }
 .header-note { color: var(--muted); font-size: 12px; letter-spacing: .035em; }
 .challenge-shell { max-width: 1232px; padding: 0 40px; margin: auto; }
-.challenge-intro { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 40px; padding: 24px 0 28px; }
+.challenge-intro { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); align-items: center; gap: 32px; padding: 24px 0 28px; }
 .intro-copy { min-width: 0; padding: 0; }
 .eyebrow { font-size: 11px; font-weight: 750; letter-spacing: .19em; line-height: 1.6; text-transform: uppercase; color: var(--violet-deep); }
 .challenge-intro h1 { margin: 18px 0 20px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(56px, 6.8vw, 92px); font-weight: 400; letter-spacing: -.065em; line-height: 1.02; }
@@ -53,7 +53,7 @@ h1, h2, h3, p { margin: 0; }
 .guide-day { margin-top: 6px; color: var(--ink); font-size: 13px; font-weight: 650; }
 .day-number { width: 28px; min-width: 28px; }
 #shria-widget-container { scroll-margin-top: 24px; }
-.hero-art { position: relative; isolation: isolate; min-width: 0; width: 100%; max-width: 420px; justify-self: end; height: 280px; overflow: hidden; border-radius: 130px 130px 24px 24px; background: var(--ink); box-shadow: 0 18px 40px -28px #26204488; }
+.hero-art { position: relative; isolation: isolate; min-width: 0; width: 100%; justify-self: stretch; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 130px 130px 24px 24px; background: var(--ink); box-shadow: 0 18px 40px -28px #26204488; }
 .hero-art img { object-fit: cover; object-position: center 54%; }
 .hero-art::after { content: ""; position: absolute; z-index: 1; inset: 65% 0 0; background: linear-gradient(transparent, #11152d9e); pointer-events: none; }
 .hero-art-label { position: absolute; z-index: 3; bottom: 28px; left: 30px; right: 24px; color: #fff6f0; font-family: Georgia, serif; font-size: 22px; font-style: italic; letter-spacing: -.025em; text-shadow: 0 2px 10px #171a38; }
@@ -156,7 +156,7 @@ h1, h2, h3, p { margin: 0; }
   .challenge-shell { padding: 0 28px; }
   .site-header { padding-inline: 28px; }
   .challenge-intro { gap: 28px; }
-  .hero-art { height: 280px; border-top-left-radius: 105px; border-top-right-radius: 105px; }
+  .hero-art { border-top-left-radius: 105px; border-top-right-radius: 105px; }
   .practice-intention { padding: 24px; }
   .shria-guide { padding-inline: 20px; }
   .day-step { flex-direction: column; gap: 7px; text-align: center; }
