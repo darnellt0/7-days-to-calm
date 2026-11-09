@@ -6,6 +6,7 @@ import ShriaGuide from "./ShriaGuide";
 import ConfirmationDialog from "./ConfirmationDialog";
 import MotionControl, { useAmbientMotion } from "./MotionControl";
 import HeroVideo from "./HeroVideo";
+import PracticeSymbol from "./PracticeSymbol";
 
 const themes = [
   { title: "Arrive", description: "A gentle reset with breath and sound.", intention: "You don’t have to arrive feeling calm. Just arrive as you are." },
@@ -114,12 +115,13 @@ export default function SevenDaysToCalm() {
         <article className="practice-card" id="practice" aria-labelledby="practice-title">
           <ShriaGuide key={currentDay} day={currentDay} title={theme.title} onEvent={pushDL} onActiveChange={handleSessionActive} onPracticeEnd={handlePracticeEnd} />
           <div className="practice-intention" key={`intention-${currentDay}`}>
-            <p className="eyebrow">Your daily pause · Day {currentDay.toString().padStart(2, "0")}</p>
-            <h2 id="practice-title"><span className="sr-only">Day {currentDay}: </span>{theme.title}</h2>
+            <div className="practice-heading"><div><p className="eyebrow">Your daily pause · Day {currentDay.toString().padStart(2, "0")}</p>
+            <h2 id="practice-title"><span className="sr-only">Day {currentDay}: </span>{theme.title}</h2></div><span className="practice-emblem"><PracticeSymbol day={currentDay} /></span></div>
             <p className="practice-description">{theme.description}</p>
             <div className="intention-note"><span aria-hidden="true">✦</span><p>{theme.intention}</p></div>
             <div className="practice-details"><span>2, 5, or 8 minutes</span><span>Guided by Shria</span></div>
             <p className="gentle-note">Find a comfortable seat. You can keep your eyes open, and make every practice your own.</p>
+            <div className="practice-waterline" aria-hidden="true" />
           </div>
           <footer className="practice-footer">
             <div><p className="footer-title">{finalComplete ? "Seven days complete. Keep making time for calm." : "A small practice is enough."}</p><p>{sessionActive ? "End your conversation before moving to the next day." : "When you feel ready, mark today’s practice complete."}</p></div>

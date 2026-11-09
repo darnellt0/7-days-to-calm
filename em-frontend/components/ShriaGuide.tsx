@@ -182,8 +182,8 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
     <section id="shria-widget-container" tabIndex={-1} aria-label="Shria voice guide" className="shria-guide" data-state={busy ? "connecting" : connected ? (muted ? "muted" : status === "Shria is speaking" ? "speaking" : "listening") : "idle"}>
       <span className="guide-label">Your mindfulness companion</span>
       <p className="guide-day">Day {day} · {title}</p>
-      <div className="shria-orbit" aria-hidden="true"><span className="orbit-ring" /><span className="orbit-core" /><span className="orbit-spark" /></div>
-      <h3>Practice with Shria</h3>
+      <div className="guide-identity"><div className="shria-orbit" aria-hidden="true"><span className="orbit-ring" /><span className="orbit-core" /><span className="orbit-spark" /></div>
+      <h2>Practice with Shria</h2></div>
       <p className="guide-invitation">A familiar voice. A moment to reconnect.<br />Tell Shria how much time you have.</p>
       <div className="session-status"><span className="status-dot" aria-hidden="true" /><p role="status" aria-live="polite">{connected && muted ? "Microphone muted · you can still listen" : status}</p>{connected && <time aria-label="Session duration">{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}</time>}</div>
       {error && <p role="alert" className="voice-error">{error}</p>}

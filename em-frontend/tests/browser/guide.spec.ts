@@ -11,6 +11,7 @@ test('practice-first layout preserves readable type and a direct start path acro
   expect(await page.locator('#practice').evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(await page.locator('.journey').evaluate(el => el.getBoundingClientRect().top));
   await page.screenshot({ path: 'test-results/layout-desktop-viewport.png' });
   await page.screenshot({ path: 'test-results/layout-desktop-full.png', fullPage: true });
+  await page.locator('#practice').screenshot({ path: 'test-results/detail-desktop-practice.png' });
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     await page.evaluate(() => scrollTo(0, 0));
@@ -24,6 +25,15 @@ test('practice-first layout preserves readable type and a direct start path acro
     await expect(begin).toBeInViewport();
     await page.screenshot({ path: `test-results/layout-mobile-${width}-practice.png` });
   }
+  // Longer day titles and completion must remain readable beside the artwork.
+  await page.getByRole('button', { name: 'Complete Day 1', exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Day 2: Longer Exhale', exact: true })).toBeVisible();
+  await page.locator('#practice').screenshot({ path: 'test-results/detail-mobile-320-day2.png' });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (let day = 2; day <= 7; day++) await page.getByRole('button', { name: `Complete Day ${day}`, exact: true }).click();
+  await page.reload();
+  await page.locator('#practice').screenshot({ path: 'test-results/detail-mobile-320-complete.png' });
 });
 
 test('inline guide is visible without signing; progress persists and resets', async ({ page }) => {
