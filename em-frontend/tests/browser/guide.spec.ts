@@ -1,5 +1,31 @@
 import { test, expect } from '@playwright/test';
 
+test('practice-first layout preserves readable type and a direct start path across screen sizes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/7-days-to-calm');
+  await expect(page.locator('.hero-video.has-frame')).toBeVisible();
+  const entry = page.getByRole('link', { name: 'Go to your practice' });
+  const begin = page.getByRole('button', { name: 'Begin practice' });
+  expect(await entry.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+  await expect(entry).toHaveClass(/button-primary/);
+  expect(await page.locator('#practice').evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(await page.locator('.journey').evaluate(el => el.getBoundingClientRect().top));
+  await page.screenshot({ path: 'test-results/layout-desktop-viewport.png' });
+  await page.screenshot({ path: 'test-results/layout-desktop-full.png', fullPage: true });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(() => scrollTo(0, 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect(await begin.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
+    expect(await page.locator('.shria-guide').evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(await page.locator('.practice-intention').evaluate(el => el.getBoundingClientRect().top));
+    await page.screenshot({ path: `test-results/layout-mobile-${width}-full.png`, fullPage: true });
+    await entry.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('region', { name: 'Shria voice guide' })).toBeFocused();
+    await expect(begin).toBeInViewport();
+    await page.screenshot({ path: `test-results/layout-mobile-${width}-practice.png` });
+  }
+});
+
 test('inline guide is visible without signing; progress persists and resets', async ({ page }) => {
   let requests = 0;
   await page.route('**/convai/signed-url**', route => { requests++; return route.abort(); });

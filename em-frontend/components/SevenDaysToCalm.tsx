@@ -108,9 +108,24 @@ export default function SevenDaysToCalm() {
       <header className="site-header"><a href="https://www.elevatedmovements.com" className="brand"><span className="brand-mark" aria-hidden="true">e<span>m</span></span><span>Elevated Movements</span></a><span className="header-note">A little space for yourself</span></header>
       <div className="challenge-shell">
         <header className="challenge-intro">
-          <div className="intro-copy"><p className="eyebrow">A seven-day mindfulness journey</p><h1>Less noise.<br />More <em>calm.</em></h1><p>Seven days. A few minutes. A little more room to be yourself.</p><div className="intro-details"><span>7 Days to Calm</span><span>With your voice guide, Shria</span></div><a className="intro-start" href="#shria-widget-container">Go to your practice <span aria-hidden="true">↓</span></a></div>
+          <div className="intro-copy"><p className="eyebrow">7 Days to Calm · A mindfulness journey</p><h1>Less noise.<br />More <em>calm.</em></h1><p>Seven days. A few minutes. A little more room to be yourself.</p><a className="intro-start button button-primary" href="#shria-widget-container">Go to your practice <span aria-hidden="true">↓</span></a></div>
           <div className="hero-art"><Image src="/images/calm-portal.png" alt="A luminous violet glass portal reflected in still water at a coral sunset" fill priority sizes="(max-width: 700px) 100vw, 50vw" /><HeroVideo enabled={motion.enabled} allowed={motion.ready && !motion.reduced} sessionActive={sessionActive} /><span className="hero-art-label">A softer state of mind</span><span className="hero-art-orbit" aria-hidden="true" /><MotionControl enabled={motion.enabled} ready={motion.ready} reduced={motion.reduced} onToggle={motion.toggle} /></div>
         </header>
+        <article className="practice-card" id="practice" aria-labelledby="practice-title">
+          <ShriaGuide key={currentDay} day={currentDay} title={theme.title} onEvent={pushDL} onActiveChange={handleSessionActive} onPracticeEnd={handlePracticeEnd} />
+          <div className="practice-intention" key={`intention-${currentDay}`}>
+            <p className="eyebrow">Your daily pause · Day {currentDay.toString().padStart(2, "0")}</p>
+            <h2 id="practice-title"><span className="sr-only">Day {currentDay}: </span>{theme.title}</h2>
+            <p className="practice-description">{theme.description}</p>
+            <div className="intention-note"><span aria-hidden="true">✦</span><p>{theme.intention}</p></div>
+            <div className="practice-details"><span>2, 5, or 8 minutes</span><span>Guided by Shria</span></div>
+            <p className="gentle-note">Find a comfortable seat. You can keep your eyes open, and make every practice your own.</p>
+          </div>
+          <footer className="practice-footer">
+            <div><p className="footer-title">{finalComplete ? "Seven days complete. Keep making time for calm." : "A small practice is enough."}</p><p>{sessionActive ? "End your conversation before moving to the next day." : "When you feel ready, mark today’s practice complete."}</p></div>
+            <button className={`button complete-button ${hasPracticed ? "button-primary is-ready" : "button-secondary"}`} disabled={!loaded || sessionActive || finalComplete} onClick={completeDay} aria-label={`Complete Day ${currentDay}`} id="em-continue-day">{finalComplete ? "Challenge complete ✓" : <>Complete Day {currentDay} <span aria-hidden="true">→</span></>}</button>
+          </footer>
+        </article>
         <section className="journey" aria-label="Challenge progress">
           <div className="journey-caption"><span>Your week of calm</span><span>{completed} of 7 days complete</span></div>
           <p className="mobile-current-day">Day {currentDay} of 7 <span aria-hidden="true">·</span> <strong>{theme.title}</strong></p>
@@ -123,21 +138,6 @@ export default function SevenDaysToCalm() {
           </ol>
           <div className="journey-track" role="progressbar" aria-label="Days completed" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completed}><span style={{ width: `${completed / 7 * 100}%` }} /></div>
         </section>
-        <article className="practice-card" id="practice" aria-labelledby="practice-title">
-          <div className="practice-intention" key={`intention-${currentDay}`}>
-            <p className="eyebrow">Your daily pause · Day {currentDay.toString().padStart(2, "0")}</p>
-            <h2 id="practice-title"><span className="sr-only">Day {currentDay}: </span>{theme.title}</h2>
-            <p className="practice-description">{theme.description}</p>
-            <div className="intention-note"><span aria-hidden="true">✦</span><p>{theme.intention}</p></div>
-            <div className="practice-details"><span>2, 5, or 8 minutes</span><span>Guided by Shria</span></div>
-            <p className="gentle-note">Find a comfortable seat. You can keep your eyes open, and make every practice your own.</p>
-          </div>
-          <ShriaGuide key={currentDay} day={currentDay} title={theme.title} onEvent={pushDL} onActiveChange={handleSessionActive} onPracticeEnd={handlePracticeEnd} />
-          <footer className="practice-footer">
-            <div><p className="footer-title">{finalComplete ? "Seven days complete. Keep making time for calm." : "A small practice is enough."}</p><p>{sessionActive ? "End your conversation before moving to the next day." : "When you feel ready, mark today’s practice complete."}</p></div>
-            <button className={`button complete-button ${hasPracticed ? "button-primary is-ready" : "button-secondary"}`} disabled={!loaded || sessionActive || finalComplete} onClick={completeDay} aria-label={`Complete Day ${currentDay}`} id="em-continue-day">{finalComplete ? "Challenge complete ✓" : <>Complete Day {currentDay} <span aria-hidden="true">→</span></>}</button>
-          </footer>
-        </article>
         <div className="progress-tools"><span>Make this week work for you.</span><div><button disabled={!loaded || sessionActive} onClick={() => { if (todayDay() > currentDay) setDialog("skip"); else setToast("You’re already on today’s practice. Take it at your own pace."); }}>Skip to Today</button><span aria-hidden="true">·</span><button disabled={!loaded || sessionActive} onClick={() => setDialog("reset")} aria-label="Reset to Day 1">Start over</button></div></div>
         {storageUnavailable && <p role="status" className="storage-note">Your browser isn’t saving progress. You can still practice, but your place may reset when you leave.</p>}
         {finalComplete && <section className="next-chapter" aria-label="Continue your practice"><p className="eyebrow">A new beginning</p><h2>Keep a little calm in your day.</h2><p>The MenoPause Reset brings together daily practices, a reflection journal, and ongoing support.</p><a className="button button-gold" href="https://app.elevatedmovements.com" target="_blank" rel="noopener noreferrer">Explore The MenoPause Reset <span aria-hidden="true">↗</span></a><p className="offer-detail">$19 founding access · Use code <strong>RESET50</strong> for 50% off</p><a className="member-link" href="https://app.elevatedmovements.com" target="_blank" rel="noopener noreferrer">Already a member? Sign in →</a></section>}
