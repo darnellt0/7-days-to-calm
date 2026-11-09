@@ -69,7 +69,7 @@ test('real SDK sends day context, displays transcript, mutes and ends (provider 
   await expect(page.getByRole('button', { name: 'Complete Day 3', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Reset to Day 1' })).toBeDisabled();
   await expect(page.getByLabel('Session duration')).toBeVisible();
-  expect(await page.locator('.hero-art img').evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
+  expect(await page.locator('.hero-video').evaluateAll(videos => videos.every(el => (el as HTMLVideoElement).paused))).toBe(true);
   expect(events.find(event => event.type === 'conversation_initiation_client_data')?.dynamic_variables).toMatchObject({ challenge_day: 3, challenge_title: 'Body Scan' });
   await expect(page.getByRole('log')).toContainText('Welcome to Day 3');
   await page.screenshot({ path: 'test-results/design-active-session.png', fullPage: true });
@@ -159,26 +159,66 @@ test('microphone denial explains recovery without fetching credentials', async (
   expect(requested).toBe(false);
 });
 
-test('ambient motion moves, pauses persistently, and follows device reduced-motion changes', async ({ page }) => {
+test('real hero video plays, pauses persistently, and follows reduced-motion changes', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/7-days-to-calm');
   const main = page.getByRole('main');
-  const image = page.locator('.hero-art img');
+  const video = page.locator('.hero-video');
   await expect(main).toHaveAttribute('data-motion', 'running');
-  const first = await image.evaluate(el => getComputedStyle(el).transform);
-  await expect.poll(() => image.evaluate(el => getComputedStyle(el).transform)).not.toBe(first);
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(.1);
+  await expect(video).toHaveJSProperty('muted', true);
+  await expect(video).toHaveJSProperty('loop', true);
+  await expect(video).toHaveJSProperty('videoWidth', 960);
+  await video.evaluate((el: HTMLVideoElement) => { el.currentTime = el.duration - .15; });
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeLessThan(1);
   await page.getByRole('button', { name: 'Pause motion', exact: true }).click();
   await expect(main).toHaveAttribute('data-motion', 'paused');
-  expect(await image.evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
+  await expect(video).toHaveJSProperty('paused', true);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Play motion', exact: true })).toBeVisible();
   await expect(main).toHaveAttribute('data-motion', 'paused');
+  await expect(video).toHaveCount(0);
   await page.getByRole('button', { name: 'Play motion', exact: true }).click();
   await expect(main).toHaveAttribute('data-motion', 'running');
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(.1);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.getByRole('button', { name: 'Motion reduced', exact: true })).toBeDisabled();
   await expect(main).toHaveAttribute('data-motion', 'paused');
-  expect(await image.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await expect(video).toHaveCount(0);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect(main).toHaveAttribute('data-motion', 'running');
+});
+
+test('reduced-motion first load avoids video requests; failed media retains the artwork', async ({ page }) => {
+  let videoRequests = 0;
+  await page.route('**/video/portal-loop.*', route => { videoRequests++; return route.abort(); });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/7-days-to-calm');
+  await expect(page.getByRole('button', { name: 'Motion reduced' })).toBeDisabled();
+  await expect(page.locator('.hero-video')).toHaveCount(0);
+  expect(videoRequests).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect.poll(() => videoRequests).toBeGreaterThan(0);
+  await expect(page.locator('.hero-video')).toHaveCount(0);
+  await expect(page.getByRole('img', { name: /luminous violet glass portal/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Begin practice' })).toBeVisible();
+});
+
+test('blocked autoplay offers manual play and a failed MP4 falls back to WebM', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.route('**/video/portal-loop.mp4', route => route.abort());
+  await page.addInitScript(() => {
+    const original = HTMLMediaElement.prototype.play;
+    let blocked = false;
+    HTMLMediaElement.prototype.play = function () {
+      if (!blocked) { blocked = true; return Promise.reject(new DOMException('gesture required', 'NotAllowedError')); }
+      return original.call(this);
+    };
+  });
+  await page.goto('/7-days-to-calm');
+  await page.getByRole('button', { name: 'Play video', exact: true }).click();
+  const video = page.locator('.hero-video');
+  await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(.1);
+  expect(await video.evaluate((el: HTMLVideoElement) => el.currentSrc)).toContain('portal-loop.webm');
+  await expect(page.getByRole('button', { name: 'Play video', exact: true })).toBeHidden();
 });

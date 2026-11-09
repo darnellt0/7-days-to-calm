@@ -5,6 +5,7 @@ import Image from "next/image";
 import ShriaGuide from "./ShriaGuide";
 import ConfirmationDialog from "./ConfirmationDialog";
 import MotionControl, { useAmbientMotion } from "./MotionControl";
+import HeroVideo from "./HeroVideo";
 
 const themes = [
   { title: "Arrive", description: "A gentle reset with breath and sound.", intention: "You don’t have to arrive feeling calm. Just arrive as you are." },
@@ -108,7 +109,7 @@ export default function SevenDaysToCalm() {
       <div className="challenge-shell">
         <header className="challenge-intro">
           <div className="intro-copy"><p className="eyebrow">A seven-day mindfulness journey</p><h1>Less noise.<br />More <em>calm.</em></h1><p>Seven days. A few minutes. A little more room to be yourself.</p><div className="intro-details"><span>7 Days to Calm</span><span>With your voice guide, Shria</span></div><a className="intro-start" href="#shria-widget-container">Go to your practice <span aria-hidden="true">↓</span></a></div>
-          <div className="hero-art"><Image src="/images/calm-portal.png" alt="A luminous violet glass portal reflected in still water at a coral sunset" fill priority sizes="(max-width: 700px) 100vw, 50vw" /><span className="hero-art-label">A softer state of mind</span><span className="hero-art-orbit" aria-hidden="true" /><MotionControl enabled={motion.enabled} ready={motion.ready} reduced={motion.reduced} onToggle={motion.toggle} /></div>
+          <div className="hero-art"><Image src="/images/calm-portal.png" alt="A luminous violet glass portal reflected in still water at a coral sunset" fill priority sizes="(max-width: 700px) 100vw, 50vw" /><HeroVideo enabled={motion.enabled} allowed={motion.ready && !motion.reduced} sessionActive={sessionActive} /><span className="hero-art-label">A softer state of mind</span><span className="hero-art-orbit" aria-hidden="true" /><MotionControl enabled={motion.enabled} ready={motion.ready} reduced={motion.reduced} onToggle={motion.toggle} /></div>
         </header>
         <section className="journey" aria-label="Challenge progress">
           <div className="journey-caption"><span>Your week of calm</span><span>{completed} of 7 days complete</span></div>

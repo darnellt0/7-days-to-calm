@@ -82,3 +82,9 @@ Ive and Kare visually inspected desktop/mobile screenshots from within their per
 ## Ambient motion pass
 
 Production build and eight browser tests pass. The motion test observes changing rendered image transforms, persistent pause/reload/play, and runtime changes to the device reduced-motion preference. The SDK regression verifies hero animation is paused during a session. Existing progress, keyboard, storage failure, mobile overflow and microphone-error checks remain passing. Desktop/phone screenshots were inspected. Virgil supplied a written motion recommendation; that is not independent rendered-motion or live audio sign-off. See `MOTION-PASS.md`.
+
+## Actual video-loop follow-up
+
+The user requested stronger motion and a real video loop. Rendered a silent ten-second 960×640 cinemagraph from the existing generated artwork: H.264 MP4 (446,463 bytes) and VP9 WebM (309,382 bytes). Decoded all 250 frames; periodic source frames at t=0 and t=10 match exactly. The previous hero CSS zoom is removed.
+
+Final production build and ten browser tests pass. Because OneDrive intermittently locked generated diagnostics, the final build/tests ran from a temporary copy of the current app inputs using the installed dependencies. Checks include native decoded time advancement and loop wraparound, pause/reload/play, runtime reduced-motion removal, zero video requests on a reduced-motion first load, manual recovery from blocked autoplay, actual WebM playback after MP4 failure, poster fallback after media failure, and existing SDK/progress/accessibility/mobile checks. These are operator-run checks; no new Turing-executed app test or human audio test is claimed.
