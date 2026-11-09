@@ -106,7 +106,7 @@ export default function SevenDaysToCalm() {
   return (
     <main className="calm-page" id="main-content" data-motion={motion.enabled ? "running" : "paused"} data-session-active={sessionActive}>
       <a className="skip-link" href="#practice">Skip to today’s practice</a>
-      <header className="site-header"><a href="https://www.elevatedmovements.com" className="brand" aria-label="Elevated Movements home"><Image className="brand-logo" src="/images/elevated-movements-logo.png" alt="Elevated Movements" width={460} height={96} priority sizes="(max-width: 380px) 156px, (max-width: 760px) 180px, 210px" /></a><span className="header-note">A little space for yourself</span></header>
+      <header className="site-header"><a href="https://www.elevatedmovements.com" className="brand" aria-label="Elevated Movements home"><Image className="brand-logo" src="/images/elevated-movements-logo-on-light.png" alt="Elevated Movements" width={471} height={141} priority sizes="(max-width: 380px) 184px, (max-width: 760px) 210px, 252px" /></a><span className="header-note">A little space for yourself</span></header>
       <div className="challenge-shell">
         <header className="challenge-intro">
           <div className="intro-copy"><p className="eyebrow">7 Days to Calm · A mindfulness journey</p><h1>Less noise.<br />More <em>calm.</em></h1><p>Seven days. A few minutes. A little more room to be yourself.</p><a className="intro-start button button-primary" href="#shria-widget-container">Go to your practice <span aria-hidden="true">↓</span></a></div>

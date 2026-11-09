@@ -1,6 +1,16 @@
 # Design assets
 
-## Official header logo — November 9, 2026
+## Current header logo: larger, directly on light — November 9, 2026
+
+`em-frontend/public/images/elevated-movements-logo-on-light.png` is the official brand-kit primary asset, originally named `Elevated Movements Horizontal Logo CMYK Full Color trademark.png`: 471×141 RGBA, 22,291 bytes; SHA256 `c91ea7e408e062fb89c11c29be1ac7944979825301628912b336014e75ca0e35`. The main brand-kit and Marcus copies match. This is existing dark-lettering artwork with its original tree, wordmark and tagline, not an edited/inverted/generated version of the white logo.
+
+The user requested a more visible logo without extra header whitespace. It now renders at 252px desktop, 210px phone and 184px narrow-phone width, up from 210/180/156px. Removed the navy backing and vertical header padding; the complete asset retains its proportions directly on the light background. Desktop header remains 76px; phone checks require at most 80px. Home link/accessibility, readable text, accepted hero gap and quiet media control remain intact.
+
+Ive and Kare reviewed the source-bound candidate, original artwork and screenshots at 1440/1920 and 390/320; both READY, no must-fix. Build `zNzks53xVujrcw6jVnecm` and all eleven operator browser checks pass (30.5s), including actual logo loading, 471:141 proportions, increased widths, transparent backing, header-height limits, phone overflow and existing regressions. Their review was static image/source inspection, not agent-executed tests or human audio assessment.
+
+Lesson: check official brand-kit variants before inventing a backing for a white-only logo. Choose the appropriate supplied variant for the background, preserve the artwork and compensate padding when increasing its size. The earlier white-lettering asset remains available but is no longer used in the header.
+
+## Previous white-lettering header logo — November 9, 2026
 
 `em-frontend/public/images/elevated-movements-logo.png` is the official unmodified tree-and-wordmark PNG used on the [Elevated Movements homepage](https://www.elevatedmovements.com/). [Original asset](https://cdn.prod.website-files.com/67c8b63cf22ae4778cf07e92/6a203cd3f356012f0d5199f8_em-logo-tmfixed.png): 460×96 RGBA, 18,196 bytes; SHA256 `9ce01d20f6579cccbee36e2fd41a8f59e6d679a6841f1ea5b4b3a471c5f41085`.
 

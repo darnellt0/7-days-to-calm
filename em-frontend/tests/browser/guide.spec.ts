@@ -24,7 +24,10 @@ test('practice-first layout preserves readable type and a direct start path acro
   const logo = page.getByRole('img', { name: 'Elevated Movements', exact: true });
   await expect.poll(() => logo.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
   await expect(page.getByRole('link', { name: 'Elevated Movements home' })).toHaveAttribute('href', 'https://www.elevatedmovements.com');
-  expect(await logo.evaluate(el => el.getBoundingClientRect().width / el.getBoundingClientRect().height)).toBeCloseTo(460 / 96, 1);
+  expect(await logo.evaluate(el => el.getBoundingClientRect().width / el.getBoundingClientRect().height)).toBeCloseTo(471 / 141, 1);
+  expect(await logo.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(250);
+  expect(await page.locator('.site-header').evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(77);
+  expect(await page.locator('.brand').evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)');
   for (const width of [1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
     // Measure visible headline text, not its wider block box: this is the gap users see.
@@ -49,6 +52,8 @@ test('practice-first layout preserves readable type and a direct start path acro
   await page.locator('#practice').screenshot({ path: 'test-results/detail-desktop-practice.png' });
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
+    expect(await logo.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(width === 320 ? 184 : 210);
+    expect(await page.locator('.site-header').evaluate(el => el.getBoundingClientRect().height)).toBeLessThanOrEqual(80);
     await page.evaluate(() => scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await checkMotionSafeArea(page);
