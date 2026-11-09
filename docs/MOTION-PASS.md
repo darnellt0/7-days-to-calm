@@ -11,3 +11,9 @@ Virgil advised the earlier CSS pass from a written brief. That recommendation is
 Verification covers actual decoded playback/time advancement, native loop wraparound, persistent pause/reload/play, runtime reduced-motion changes, zero initial video requests under reduced motion, autoplay recovery, MP4-to-WebM recovery, failed-media poster fallback, and the existing voice/progress/accessibility/mobile checks. Voice protocol tests use a mock provider and synthetic microphone, not a new human audio test.
 
 Live visual inspection caught the arched image clipping the corner-mounted motion control. The control is centered within the arch; the phone regression checks all four inset corners of its actual hit area.
+
+## Stronger living-water revision
+
+The user found the first video too subtle and requested more noticeable water and reflection movement. The v2 loop increases the wave displacement amplitudes, uses broader rolling waves and faster ripples, moves/widens the warm reflection path, and strengthens traveling highlights. A protection mask keeps the solid portal and horizon anchored. Motion must be reviewed at the actual displayed hero size; successful video playback alone does not establish perceptibility.
+
+The app selects `portal-loop-v2.mp4` / `.webm` so a cached original cannot obscure the change. The original loop is retained for comparison. Pause, device reduced motion, offscreen/hidden-tab handling, voice-session pause and still-artwork fallback remain unchanged.

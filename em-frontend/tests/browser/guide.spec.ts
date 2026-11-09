@@ -191,7 +191,7 @@ test('real hero video plays, pauses persistently, and follows reduced-motion cha
 
 test('reduced-motion first load avoids video requests; failed media retains the artwork', async ({ page }) => {
   let videoRequests = 0;
-  await page.route('**/video/portal-loop.*', route => { videoRequests++; return route.abort(); });
+  await page.route('**/video/portal-loop*', route => { videoRequests++; return route.abort(); });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/7-days-to-calm');
   await expect(page.getByRole('button', { name: 'Motion reduced' })).toBeDisabled();
@@ -206,7 +206,7 @@ test('reduced-motion first load avoids video requests; failed media retains the 
 
 test('blocked autoplay offers manual play and a failed MP4 falls back to WebM', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.route('**/video/portal-loop.mp4', route => route.abort());
+  await page.route('**/video/portal-loop-v2.mp4', route => route.abort());
   await page.addInitScript(() => {
     const original = HTMLMediaElement.prototype.play;
     let blocked = false;
@@ -219,6 +219,6 @@ test('blocked autoplay offers manual play and a failed MP4 falls back to WebM', 
   await page.getByRole('button', { name: 'Play video', exact: true }).click();
   const video = page.locator('.hero-video');
   await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(.1);
-  expect(await video.evaluate((el: HTMLVideoElement) => el.currentSrc)).toContain('portal-loop.webm');
+  expect(await video.evaluate((el: HTMLVideoElement) => el.currentSrc)).toContain('portal-loop-v2.webm');
   await expect(page.getByRole('button', { name: 'Play video', exact: true })).toBeHidden();
 });
