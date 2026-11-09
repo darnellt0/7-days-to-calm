@@ -18,6 +18,8 @@ Review desktop/mobile screenshots and state transitions. Fix concrete layout, co
 
 Performed: screenshot review exposed squeezed mobile day markers and awkward multi-line labels. Fixed marker widths and added compact visible labels while preserving full names for screen readers. Added a direct hero link to Shria so phone users can bypass introductory content. Increased small functional text following design critique. Replaced the voice button's external-link arrow with a microphone icon. Browser regression caught lost focus after dismissing a dialog; explicit focus restoration corrects it.
 
+Follow-up with the user's OpenClaw design team: Ive and Kare visually reviewed the screenshots and endorsed the palette/artwork. Applied their readability and hierarchy recommendations: mobile full current-day title instead of abbreviated labels, larger supporting text, day context within the voice panel, a keyboard-focusable hero destination, and an outlined completion action until a voice session ends. See `OPENCLAW-DESIGN-REVIEW.md` for evidence and scope.
+
 ## Release checks
 
 Production build, focused browser regressions, desktop/mobile screenshots, console inspection, commit/deploy through existing main integration, custom-domain and backend signing checks. The user checks real microphone/speaker quality on their device.

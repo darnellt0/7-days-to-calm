@@ -7,12 +7,13 @@ interface Props {
   day: number;
   title: string;
   onActiveChange: (active: boolean) => void;
+  onPracticeEnd: () => void;
   onEvent: (name: string, payload?: Record<string, unknown>) => void;
 }
 
 type Session = Awaited<ReturnType<typeof Conversation.startSession>>;
 
-export default function ShriaGuide({ day, title, onActiveChange, onEvent }: Props) {
+export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, onEvent }: Props) {
   const session = useRef<Session | null>(null);
   const generation = useRef(0);
   const starting = useRef(false);
@@ -62,6 +63,7 @@ export default function ShriaGuide({ day, title, onActiveChange, onEvent }: Prop
     finally {
       setConnected(false); setBusy(false); setMuted(false);
       setStatus("Practice ended. You can begin again.");
+      if (active) onPracticeEnd();
       onEvent("em_convai_ended", { day });
     }
   }
@@ -133,9 +135,11 @@ export default function ShriaGuide({ day, title, onActiveChange, onEvent }: Prop
         onMessage: ({ source, message }) => { if (current()) setMessages(prev => [...prev.slice(-49), { source, text: message }]); },
         onDisconnect: () => {
           if (current()) {
+            const wasConnected = session.current !== null;
             session.current = null; starting.current = false;
             setConnected(false); setBusy(false); setMuted(false); setStatus("Conversation ended. Begin again whenever you're ready.");
             onEvent("em_convai_ended", { day });
+            if (wasConnected) onPracticeEnd();
           }
         },
         onError: () => {
@@ -175,8 +179,9 @@ export default function ShriaGuide({ day, title, onActiveChange, onEvent }: Prop
   }
 
   return (
-    <section id="shria-widget-container" aria-label="Shria voice guide" className="shria-guide" data-state={busy ? "connecting" : connected ? (muted ? "muted" : status === "Shria is speaking" ? "speaking" : "listening") : "idle"}>
+    <section id="shria-widget-container" tabIndex={-1} aria-label="Shria voice guide" className="shria-guide" data-state={busy ? "connecting" : connected ? (muted ? "muted" : status === "Shria is speaking" ? "speaking" : "listening") : "idle"}>
       <span className="guide-label">Your mindfulness companion</span>
+      <p className="guide-day">Day {day} · {title}</p>
       <div className="shria-orbit" aria-hidden="true"><span className="orbit-ring" /><span className="orbit-core" /><span className="orbit-spark" /></div>
       <h3>Practice with Shria</h3>
       <p className="guide-invitation">A familiar voice. A moment to reconnect.<br />Tell Shria how much time you have.</p>

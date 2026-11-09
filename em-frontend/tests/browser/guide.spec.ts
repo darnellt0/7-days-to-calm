@@ -11,8 +11,13 @@ test('inline guide is visible without signing; progress persists and resets', as
   expect(box!.width).toBeGreaterThan(300);
   expect(box!.height).toBeGreaterThanOrEqual(420);
   expect(requests).toBe(0);
+  await expect(page.getByRole('button', { name: 'Complete Day 1', exact: true })).toHaveClass(/button-secondary/);
   for (let day = 1; day <= 7; day++) await page.getByRole('button', { name: `Complete Day ${day}`, exact: true }).click();
   await expect(page.locator('.footer-title')).toContainText('Seven days complete.');
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/design-complete-mobile.png', fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.reload();
   await expect(page.locator('.footer-title')).toContainText('Seven days complete.');
   await page.getByRole('button', { name: 'Reset to Day 1' }).click();
@@ -73,6 +78,8 @@ test('real SDK sends day context, displays transcript, mutes and ends (provider 
   await page.getByRole('button', { name: 'End', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Begin practice' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Complete Day 3', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Complete Day 3', exact: true })).toHaveClass(/is-ready/);
+  await expect(page.getByRole('heading', { name: 'Day 3: Body Scan' })).toBeVisible();
   expect(errors).toEqual([]);
   expect(logs.some(message => message.includes('[EM] widget ready'))).toBe(true);
   expect(logs.some(message => message.includes('[EM] got signed url for day'))).toBe(true);
@@ -117,7 +124,15 @@ test('new visual identity loads artwork and fits desktop and narrow mobile', asy
   await page.screenshot({ path: 'test-results/design-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(page.locator('.mobile-current-day')).toContainText('Day 1 of 7');
+  await expect(page.locator('.mobile-current-day')).toContainText('Arrive');
   await page.screenshot({ path: 'test-results/design-mobile.png', fullPage: true });
+  await page.getByRole('link', { name: 'Go to your practice' }).focus();
+  await page.keyboard.press('Enter');
+  const guide = page.getByRole('region', { name: 'Shria voice guide' });
+  await expect(guide).toBeFocused();
+  await expect(guide.getByText('Day 1 · Arrive')).toBeVisible();
+  await expect(guide.getByRole('button', { name: 'Begin practice' })).toBeInViewport();
   await page.setViewportSize({ width: 320, height: 740 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.emulateMedia({ reducedMotion: 'reduce' });

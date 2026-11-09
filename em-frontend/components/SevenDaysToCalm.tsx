@@ -15,13 +15,18 @@ const themes = [
   { title: "Integration", description: "Return to your favorite practice and carry it forward.", intention: "Small moments of care can become a way of moving through life." },
 ];
 const clampDay = (value: number) => Number.isFinite(value) ? Math.min(7, Math.max(1, Math.trunc(value))) : 1;
-const shortTitles = ["Arrive", "Exhale", "Body", "Thoughts", "Box", "Open", "Reflect"];
 
 export default function SevenDaysToCalm() {
   const [currentDay, setCurrentDay] = useState(1);
   const [finalComplete, setFinalComplete] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
+  const [hasPracticed, setHasPracticed] = useState(false);
+  const handleSessionActive = useCallback((active: boolean) => {
+    setSessionActive(active);
+    if (active) setHasPracticed(false);
+  }, []);
+  const handlePracticeEnd = useCallback(() => setHasPracticed(true), []);
   const [dialog, setDialog] = useState<"reset" | "skip" | null>(null);
   const [toast, setToast] = useState("");
   const [storageUnavailable, setStorageUnavailable] = useState(false);
@@ -55,6 +60,7 @@ export default function SevenDaysToCalm() {
     if (sessionActive) return currentDay;
     const next = clampDay(value);
     setCurrentDay(next);
+    setHasPracticed(false);
     save("em_challenge_day", String(next));
     if (next < 7) { setFinalComplete(false); save("em_challenge_complete", "false"); }
     pushDL("em_day_set", { day: next });
@@ -104,11 +110,12 @@ export default function SevenDaysToCalm() {
         </header>
         <section className="journey" aria-label="Challenge progress">
           <div className="journey-caption"><span>Your week of calm</span><span>{completed} of 7 days complete</span></div>
+          <p className="mobile-current-day">Day {currentDay} of 7 <span aria-hidden="true">·</span> <strong>{theme.title}</strong></p>
           <ol className="day-steps">
             {themes.map((item, index) => {
               const day = index + 1;
               const done = day <= completed;
-              return <li key={item.title} aria-current={day === currentDay ? "step" : undefined} className={`day-step ${done ? "is-complete" : day === currentDay ? "is-current" : ""}`}><span className="day-number" aria-hidden="true">{done ? "✓" : day}</span><span className="day-title" aria-hidden="true">{item.title}</span><span className="day-title-compact" aria-hidden="true">{shortTitles[index]}</span><span className="sr-only">Day {day}: {item.title}{done ? ", complete" : day === currentDay ? ", current" : ", upcoming"}</span></li>;
+              return <li key={item.title} aria-current={day === currentDay ? "step" : undefined} className={`day-step ${done ? "is-complete" : day === currentDay ? "is-current" : ""}`}><span className="day-number" aria-hidden="true">{done ? "✓" : day}</span><span className="day-title" aria-hidden="true">{item.title}</span><span className="sr-only">Day {day}: {item.title}{done ? ", complete" : day === currentDay ? ", current" : ", upcoming"}</span></li>;
             })}
           </ol>
           <div className="journey-track" role="progressbar" aria-label="Days completed" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completed}><span style={{ width: `${completed / 7 * 100}%` }} /></div>
@@ -122,10 +129,10 @@ export default function SevenDaysToCalm() {
             <div className="practice-details"><span>2, 5, or 8 minutes</span><span>Guided by Shria</span></div>
             <p className="gentle-note">Find a comfortable seat. You can keep your eyes open, and make every practice your own.</p>
           </div>
-          <ShriaGuide key={currentDay} day={currentDay} title={theme.title} onEvent={pushDL} onActiveChange={setSessionActive} />
+          <ShriaGuide key={currentDay} day={currentDay} title={theme.title} onEvent={pushDL} onActiveChange={handleSessionActive} onPracticeEnd={handlePracticeEnd} />
           <footer className="practice-footer">
             <div><p className="footer-title">{finalComplete ? "Seven days complete. Keep making time for calm." : "A small practice is enough."}</p><p>{sessionActive ? "End your conversation before moving to the next day." : "When you feel ready, mark today’s practice complete."}</p></div>
-            <button className="button button-primary complete-button" disabled={!loaded || sessionActive || finalComplete} onClick={completeDay} aria-label={`Complete Day ${currentDay}`} id="em-continue-day">{finalComplete ? "Challenge complete ✓" : <>Complete Day {currentDay} <span aria-hidden="true">→</span></>}</button>
+            <button className={`button complete-button ${hasPracticed ? "button-primary is-ready" : "button-secondary"}`} disabled={!loaded || sessionActive || finalComplete} onClick={completeDay} aria-label={`Complete Day ${currentDay}`} id="em-continue-day">{finalComplete ? "Challenge complete ✓" : <>Complete Day {currentDay} <span aria-hidden="true">→</span></>}</button>
           </footer>
         </article>
         <div className="progress-tools"><span>Make this week work for you.</span><div><button disabled={!loaded || sessionActive} onClick={() => { if (todayDay() > currentDay) setDialog("skip"); else setToast("You’re already on today’s practice. Take it at your own pace."); }}>Skip to Today</button><span aria-hidden="true">·</span><button disabled={!loaded || sessionActive} onClick={() => setDialog("reset")} aria-label="Reset to Day 1">Start over</button></div></div>
