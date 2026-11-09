@@ -34,11 +34,12 @@ export default function MotionControl({ enabled, ready, reduced, onToggle }: {
   reduced: boolean;
   onToggle: () => void;
 }) {
+  const label = reduced ? "Motion reduced" : enabled ? "Pause motion" : "Play motion";
   return <button className="motion-control" disabled={!ready || reduced} onClick={onToggle}
-    title={reduced ? "Your device is set to reduce motion" : "Control decorative motion throughout this page"}>
+    title={reduced ? "Your device is set to reduce motion" : label}>
     <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
       {enabled ? <><rect x="3" y="2" width="3" height="12" rx="1" /><rect x="10" y="2" width="3" height="12" rx="1" /></> : <path d="M4 2.5v11L13 8z" />}
     </svg>
-    {reduced ? "Motion reduced" : enabled ? "Pause motion" : "Play motion"}
+    <span className="sr-only">{label}</span>
   </button>;
 }

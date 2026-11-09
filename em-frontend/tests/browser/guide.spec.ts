@@ -1,5 +1,22 @@
 import { test, expect } from '@playwright/test';
 
+async function checkMotionSafeArea(page: import('@playwright/test').Page) {
+  const geometry = await page.locator('.hero-art').evaluate(hero => {
+    const image = hero.getBoundingClientRect();
+    const control = hero.querySelector('.motion-control')!.getBoundingClientRect();
+    const caption = hero.querySelector('.hero-art-label')!.getBoundingClientRect();
+    return { width: control.width, height: control.height, right: image.right - control.right,
+      bottom: image.bottom - control.bottom, captionGap: control.left - caption.right };
+  });
+  expect(geometry.width).toBeGreaterThanOrEqual(44);
+  expect(geometry.height).toBeGreaterThanOrEqual(44);
+  expect(geometry.right).toBeGreaterThanOrEqual(10);
+  expect(geometry.right).toBeLessThanOrEqual(14);
+  expect(geometry.bottom).toBeGreaterThanOrEqual(10);
+  expect(geometry.bottom).toBeLessThanOrEqual(14);
+  expect(geometry.captionGap).toBeGreaterThanOrEqual(12);
+}
+
 test('practice-first layout preserves readable type and a direct start path across screen sizes', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/7-days-to-calm');
@@ -14,6 +31,7 @@ test('practice-first layout preserves readable type and a direct start path acro
     });
     expect(headlineGap).toBeGreaterThanOrEqual(24);
     expect(headlineGap).toBeLessThanOrEqual(96);
+    await checkMotionSafeArea(page);
     await page.screenshot({ path: `test-results/hero-spacing-${width}.png` });
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -29,6 +47,7 @@ test('practice-first layout preserves readable type and a direct start path acro
     await page.setViewportSize({ width, height: 844 });
     await page.evaluate(() => scrollTo(0, 0));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await checkMotionSafeArea(page);
     expect(await begin.evaluate(el => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(18);
     expect(await page.locator('.shria-guide').evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(await page.locator('.practice-intention').evaluate(el => el.getBoundingClientRect().top));
     await page.screenshot({ path: `test-results/layout-mobile-${width}-full.png`, fullPage: true });
@@ -179,7 +198,7 @@ test('new visual identity loads artwork and fits desktop and narrow mobile', asy
   await page.locator('.motion-control').scrollIntoViewIfNeeded();
   expect(await page.locator('.motion-control').evaluate(el => {
     const r = el.getBoundingClientRect();
-    // Sample inside the button's own pill corners, not its transparent outer pixels.
+    // Sample within the round button target, including its invisible touch area.
     return [[r.left + 12, r.top + 12], [r.right - 12, r.top + 12], [r.left + 12, r.bottom - 12], [r.right - 12, r.bottom - 12]]
       .every(([x, y]) => document.elementFromPoint(x, y)?.closest('button') === el);
   })).toBe(true);
@@ -227,7 +246,9 @@ test('real hero video plays, pauses persistently, and follows reduced-motion cha
   await expect(page.getByRole('button', { name: 'Play motion', exact: true })).toBeVisible();
   await expect(main).toHaveAttribute('data-motion', 'paused');
   await expect(video).toHaveCount(0);
-  await page.getByRole('button', { name: 'Play motion', exact: true }).click();
+  await page.getByRole('button', { name: 'Play motion', exact: true }).focus();
+  await page.locator('.hero-art').screenshot({ path: 'test-results/motion-control-focused.png' });
+  await page.keyboard.press('Space');
   await expect(main).toHaveAttribute('data-motion', 'running');
   await expect.poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime)).toBeGreaterThan(.1);
   await page.emulateMedia({ reducedMotion: 'reduce' });
