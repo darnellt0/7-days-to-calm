@@ -34,7 +34,7 @@ The browser protocol test uses the actual SDK with a mocked provider WebSocket a
 
 1. Local and Render credentials are replaced and real signing is verified. Rotate any previously exposed old keys; the new secret is not committed.
 2. Challenge guidance and the default-safe `session_greeting` template are applied. A real signed WebSocket session returned the expected Day 3 / Body Scan greeting. Client tools require matching agent schemas if used.
-3. Deploy the committed backend/frontend changes and rebuild Vercel with the actual Render URL. This local build does not update hosted services.
+3. Completed: release `a283505` is pushed to production main; Vercel reports deployment success and Render serves the updated health/signing contract.
 4. Perform a real HTTPS microphone session on the deployed page and inside Webflow. Confirm the spoken day and complete daily guidance. Publishing the supplied iframe snippet in Webflow remains an external action.
 
 ## Primary references
@@ -62,3 +62,9 @@ This credential-only deployment reuses source commit `ed38f24`. The newer local 
 ## Final release candidate (2026-11-08)
 
 Rebased the repair onto current production main `7625c25`, preserving the Day 7 MenoPause Reset banner and funnel links. Next.js production build and four browser tests pass on the merged release. Added idempotent agent configuration with an ignored backup of affected fields; preserved the shared agent's existing prompt and general greeting. A real provider session confirmed its first response names Day 3 and Body Scan. The browser tests use a synthetic microphone and mocked socket; a human audio check on HTTPS remains necessary.
+
+## Production release verified (2026-11-08)
+
+Published `a283505` to main. GitHub's Vercel status reports deployment completed successfully. Both the Vercel domain and `7dtc.elevatedmovements.com` return 200 with `microphone=(self), camera=(), geolocation=()`. The production page visibly contains the inline guide and Begin practice control, with no page-load console errors. Favicon returns 200.
+
+Render's updated `/health` returns 200 and `ready: true`. Real signing returns 200, `Cache-Control: no-store`, and a request ID. Production Vercel CORS preflight passes; an unapproved origin returns 403. Signing also succeeds for the custom production and Webflow origins. A real WebSocket connection obtained through the deployed signing endpoint returns the expected Day 3 / Body Scan greeting. This test does not capture a user's microphone or prove speaker playback. The remaining acceptance check is a human voice practice over HTTPS and, when embedded, Webflow's microphone delegation.
