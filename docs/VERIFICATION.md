@@ -78,3 +78,7 @@ Next.js production build passes; seven browser tests pass. Verified persisted co
 ## OpenClaw design-team follow-up
 
 Ive and Kare visually inspected desktop/mobile screenshots from within their permitted agent workspaces. Implemented larger functional text, a full current-day label on phones, in-panel day context, keyboard focus at the hero anchor destination, and completion-action emphasis only after an established session ends. Production build and all seven focused browser tests pass again, including the keyboard handoff, unchanged day after ending a call, conditional completion styling, and the Day 7 completion screen at 320px without overflow. Desktop/mobile screenshots were inspected after integration. See `OPENCLAW-DESIGN-REVIEW.md` for review provenance, applied findings and limits.
+
+## Ambient motion pass
+
+Production build and eight browser tests pass. The motion test observes changing rendered image transforms, persistent pause/reload/play, and runtime changes to the device reduced-motion preference. The SDK regression verifies hero animation is paused during a session. Existing progress, keyboard, storage failure, mobile overflow and microphone-error checks remain passing. Desktop/phone screenshots were inspected. Virgil supplied a written motion recommendation; that is not independent rendered-motion or live audio sign-off. See `MOTION-PASS.md`.

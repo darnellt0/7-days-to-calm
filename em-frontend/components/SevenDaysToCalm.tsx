@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import ShriaGuide from "./ShriaGuide";
 import ConfirmationDialog from "./ConfirmationDialog";
+import MotionControl, { useAmbientMotion } from "./MotionControl";
 
 const themes = [
   { title: "Arrive", description: "A gentle reset with breath and sound.", intention: "You don’t have to arrive feeling calm. Just arrive as you are." },
@@ -17,6 +18,7 @@ const themes = [
 const clampDay = (value: number) => Number.isFinite(value) ? Math.min(7, Math.max(1, Math.trunc(value))) : 1;
 
 export default function SevenDaysToCalm() {
+  const motion = useAmbientMotion();
   const [currentDay, setCurrentDay] = useState(1);
   const [finalComplete, setFinalComplete] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -100,13 +102,13 @@ export default function SevenDaysToCalm() {
   const completed = finalComplete ? 7 : currentDay - 1;
 
   return (
-    <main className="calm-page" id="main-content">
+    <main className="calm-page" id="main-content" data-motion={motion.enabled ? "running" : "paused"} data-session-active={sessionActive}>
       <a className="skip-link" href="#practice">Skip to today’s practice</a>
       <header className="site-header"><a href="https://www.elevatedmovements.com" className="brand"><span className="brand-mark" aria-hidden="true">e<span>m</span></span><span>Elevated Movements</span></a><span className="header-note">A little space for yourself</span></header>
       <div className="challenge-shell">
         <header className="challenge-intro">
           <div className="intro-copy"><p className="eyebrow">A seven-day mindfulness journey</p><h1>Less noise.<br />More <em>calm.</em></h1><p>Seven days. A few minutes. A little more room to be yourself.</p><div className="intro-details"><span>7 Days to Calm</span><span>With your voice guide, Shria</span></div><a className="intro-start" href="#shria-widget-container">Go to your practice <span aria-hidden="true">↓</span></a></div>
-          <div className="hero-art"><Image src="/images/calm-portal.png" alt="A luminous violet glass portal reflected in still water at a coral sunset" fill priority sizes="(max-width: 700px) 100vw, 50vw" /><span className="hero-art-label">A softer state of mind</span><span className="hero-art-orbit" aria-hidden="true" /></div>
+          <div className="hero-art"><Image src="/images/calm-portal.png" alt="A luminous violet glass portal reflected in still water at a coral sunset" fill priority sizes="(max-width: 700px) 100vw, 50vw" /><span className="hero-art-label">A softer state of mind</span><span className="hero-art-orbit" aria-hidden="true" /><MotionControl enabled={motion.enabled} ready={motion.ready} reduced={motion.reduced} onToggle={motion.toggle} /></div>
         </header>
         <section className="journey" aria-label="Challenge progress">
           <div className="journey-caption"><span>Your week of calm</span><span>{completed} of 7 days complete</span></div>
@@ -121,7 +123,7 @@ export default function SevenDaysToCalm() {
           <div className="journey-track" role="progressbar" aria-label="Days completed" aria-valuemin={0} aria-valuemax={7} aria-valuenow={completed}><span style={{ width: `${completed / 7 * 100}%` }} /></div>
         </section>
         <article className="practice-card" id="practice" aria-labelledby="practice-title">
-          <div className="practice-intention">
+          <div className="practice-intention" key={`intention-${currentDay}`}>
             <p className="eyebrow">Your daily pause · Day {currentDay.toString().padStart(2, "0")}</p>
             <h2 id="practice-title"><span className="sr-only">Day {currentDay}: </span>{theme.title}</h2>
             <p className="practice-description">{theme.description}</p>

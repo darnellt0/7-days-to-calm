@@ -69,6 +69,7 @@ test('real SDK sends day context, displays transcript, mutes and ends (provider 
   await expect(page.getByRole('button', { name: 'Complete Day 3', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Reset to Day 1' })).toBeDisabled();
   await expect(page.getByLabel('Session duration')).toBeVisible();
+  expect(await page.locator('.hero-art img').evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
   expect(events.find(event => event.type === 'conversation_initiation_client_data')?.dynamic_variables).toMatchObject({ challenge_day: 3, challenge_title: 'Body Scan' });
   await expect(page.getByRole('log')).toContainText('Welcome to Day 3');
   await page.screenshot({ path: 'test-results/design-active-session.png', fullPage: true });
@@ -149,4 +150,28 @@ test('microphone denial explains recovery without fetching credentials', async (
   await page.getByRole('button', { name: 'Begin practice' }).click();
   await expect(page.getByRole('region', { name: 'Shria voice guide' }).getByRole('alert')).toContainText('Microphone access was denied');
   expect(requested).toBe(false);
+});
+
+test('ambient motion moves, pauses persistently, and follows device reduced-motion changes', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/7-days-to-calm');
+  const main = page.getByRole('main');
+  const image = page.locator('.hero-art img');
+  await expect(main).toHaveAttribute('data-motion', 'running');
+  const first = await image.evaluate(el => getComputedStyle(el).transform);
+  await expect.poll(() => image.evaluate(el => getComputedStyle(el).transform)).not.toBe(first);
+  await page.getByRole('button', { name: 'Pause motion', exact: true }).click();
+  await expect(main).toHaveAttribute('data-motion', 'paused');
+  expect(await image.evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Play motion', exact: true })).toBeVisible();
+  await expect(main).toHaveAttribute('data-motion', 'paused');
+  await page.getByRole('button', { name: 'Play motion', exact: true }).click();
+  await expect(main).toHaveAttribute('data-motion', 'running');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(page.getByRole('button', { name: 'Motion reduced', exact: true })).toBeDisabled();
+  await expect(main).toHaveAttribute('data-motion', 'paused');
+  expect(await image.evaluate(el => getComputedStyle(el).animationName)).toBe('none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(main).toHaveAttribute('data-motion', 'running');
 });
