@@ -46,8 +46,11 @@ export default function SevenDaysToCalm() {
 
   useEffect(() => {
     try {
-      setCurrentDay(clampDay(Number(localStorage.getItem("em_challenge_day") || 1)));
-      setFinalComplete(localStorage.getItem("em_challenge_complete") === "true");
+      const savedDay = clampDay(Number(localStorage.getItem("em_challenge_day") || 1));
+      const savedComplete = localStorage.getItem("em_challenge_complete") === "true";
+      setCurrentDay(savedDay);
+      setFinalComplete(savedDay === 7 && savedComplete);
+      if (savedComplete && savedDay !== 7) save("em_challenge_complete", "false");
       if (!localStorage.getItem("em_challenge_start")) save("em_challenge_start", new Date().toISOString());
     } catch { setStorageUnavailable(true); }
     setLoaded(true);

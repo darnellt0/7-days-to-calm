@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "test:browser": "playwright test",
+    "test:logic": "node --test tests/logic/guide.cjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Conversation } from "@elevenlabs/client";
 
 interface Props {
@@ -15,8 +15,18 @@ type Session = Awaited<ReturnType<typeof Conversation.startSession>>;
 
 export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, onEvent }: Props) {
   const session = useRef<Session | null>(null);
+  const closedSessions = useRef(new WeakMap<Session, Promise<void>>());
+  const closeSession = useCallback((active: Session | null): Promise<void> => {
+    if (!active) return Promise.resolve();
+    const existing = closedSessions.current.get(active);
+    if (existing) return existing;
+    const closing = Promise.resolve().then(() => active.endSession());
+    closedSessions.current.set(active, closing);
+    return closing;
+  }, []);
   const generation = useRef(0);
   const starting = useRef(false);
+  const stopping = useRef(false);
   const request = useRef<AbortController | null>(null);
   const [status, setStatus] = useState("Ready when you are");
   const [busy, setBusy] = useState(false);
@@ -48,19 +58,23 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
       request.current?.abort();
       const active = session.current;
       session.current = null;
-      void active?.endSession().catch(() => {});
+      void closeSession(active).catch(() => {});
     };
-  }, []);
+  }, [closeSession]);
 
   async function stop() {
-    generation.current++;
+    if (stopping.current) return;
+    stopping.current = true;
+    const stopGeneration = ++generation.current;
     request.current?.abort();
     starting.current = false;
     const active = session.current;
     session.current = null;
-    try { await active?.endSession(); }
-    catch { setError("The connection closed unexpectedly. You can begin again."); }
+    try { await closeSession(active); }
+    catch { if (stopGeneration === generation.current) setError("The connection closed unexpectedly. You can begin again."); }
     finally {
+      stopping.current = false;
+      if (stopGeneration !== generation.current) return;
       setConnected(false); setBusy(false); setMuted(false);
       setStatus("Practice ended. You can begin again.");
       if (active) onPracticeEnd();
@@ -69,7 +83,7 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
   }
 
   async function start() {
-    if (starting.current || session.current) return;
+    if (starting.current || stopping.current || session.current) return;
     starting.current = true;
     const attempt = ++generation.current;
     const current = () => attempt === generation.current;
@@ -119,16 +133,24 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
           getChallengeDay: () => JSON.stringify({ day }),
           setChallengeDay: () => JSON.stringify({ day, changed: false, message: "End the call, then use the page controls to change days." }),
           trackEvent: ({ name, payload }: { name?: string; payload?: Record<string, unknown> }) => {
+            if (!current()) return "Session ended; event not recorded.";
             onEvent(name || "em_custom", payload || {}); return "ok";
           },
           setReminder: ({ time, label }: { time?: string; label?: string }) => {
-            localStorage.setItem("em_reminder", JSON.stringify({ time, label }));
+            if (!current()) return "Session ended; reminder not saved.";
+            try { localStorage.setItem("em_reminder", JSON.stringify({ time, label })); }
+            catch { return "Reminder could not be saved because browser storage is unavailable. No notification was scheduled."; }
             onEvent("em_reminder_set", { time, label }); return "Reminder preference saved locally; no notification scheduled.";
           },
           openLink: ({ url }: { url: string }) => {
-            const target = new URL(url);
+            if (!current()) return "Session ended; link not opened.";
+            let target: URL;
+            try { target = new URL(url); }
+            catch { return "The link is invalid and was not opened."; }
             if (target.protocol !== "https:") return "Only HTTPS links are supported.";
-            window.open(target.href, "_blank", "noopener,noreferrer"); return "Opened link";
+            try { window.open(target.href, "_blank", "noopener,noreferrer"); }
+            catch { return "The browser blocked the link; it could not be opened."; }
+            return "Requested opening the link in a new tab; your browser may block popups.";
           },
         },
         onModeChange: ({ mode }) => { if (current()) setStatus(mode === "speaking" ? "Shria is speaking" : "Shria is listening"); },
@@ -136,6 +158,7 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
         onDisconnect: () => {
           if (current()) {
             const wasConnected = session.current !== null;
+            generation.current++;
             session.current = null; starting.current = false;
             setConnected(false); setBusy(false); setMuted(false); setStatus("Conversation ended. Begin again whenever you're ready.");
             onEvent("em_convai_ended", { day });
@@ -149,11 +172,11 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
         },
       });
       // If canceled during SDK startup, close the late session immediately.
-      void pending.then(active => { if (!current()) void active.endSession(); }).catch(() => {});
+      void pending.then(active => { if (!current()) void closeSession(active).catch(() => {}); }).catch(() => {});
       const active = await Promise.race([pending, new Promise<never>((_, reject) => {
         connectionTimer = setTimeout(() => reject(new Error("Connecting took too long. Please try again.")), 25000);
       })]);
-      if (!current()) { await active.endSession(); return; }
+      if (!current()) { await closeSession(active); return; }
       session.current = active;
       active.sendContextualUpdate(`This is Day ${day}: ${title} of 7 Days to Calm. Guide today's practice and ask whether the user has 2, 5, or 8 minutes.`);
       setConnected(true); setMuted(false); setStatus("Shria is listening");
@@ -161,18 +184,20 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
     } catch (cause) {
       if (current()) {
         generation.current++;
+        starting.current = false;
         const active = session.current;
         session.current = null;
-        void active?.endSession().catch(() => {});
+        void closeSession(active).catch(() => {});
         const denied = cause instanceof DOMException && cause.name === "NotAllowedError";
         const timedOut = cause instanceof DOMException && cause.name === "AbortError";
         setError(denied ? "Microphone access was denied. Allow it in your browser settings, then try again." : timedOut ? "The voice service took too long. Please try again." : cause instanceof Error ? cause.message : "Unable to start Shria. Please try again.");
-        setStatus("Ready to retry"); setConnected(false);
+        setStatus("Ready to retry"); setConnected(false); setBusy(false);
         console.error("[EM] voice session failed", { day, type: cause instanceof Error ? cause.name : "unknown" });
       }
     } finally {
       clearTimeout(connectionTimer);
-      if (attempt === generation.current || attempt + 1 === generation.current) {
+      if (request.current === controller) request.current = null;
+      if (current()) {
         starting.current = false; setBusy(false);
       }
     }

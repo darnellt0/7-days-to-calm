@@ -1,6 +1,10 @@
 import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/browser', workers: 1,
+  projects: [
+    { name: 'desktop', use: { viewport: { width: 1280, height: 720 } } },
+    { name: 'mobile-touch', use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } },
+  ],
   use: {
     baseURL: 'http://localhost:3001', permissions: ['microphone'],
     launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] },
