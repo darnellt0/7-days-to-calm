@@ -40,3 +40,21 @@ From `em-frontend`: `npm run test:logic`, `npm run build`, then `npm run test:br
 ## Remaining acceptance
 
 Identify the intended Shria voice in the signed-in ElevenLabs account, then compare a real desktop and physical-phone audio practice against the approved voice. Check opening and mid-session voice consistency, natural pacing, microphone release and day-specific guidance. Automated text correctness cannot approve those perceptual properties.
+
+
+## Voice restoration — 2026-11-10
+
+Inspected the public working page: its two embeds both reference the same shared agent as the new app (`agent_4201k708pqxsed39y0vsz05gn66e`); neither supplies an independent voice override. This means the current old page cannot independently establish a historical voice configuration.
+
+In the signed-in ElevenLabs account, My Voices contains a saved voice explicitly named **Shria** (`DoEstgRs2aKZVhKhJhnx`). Published that voice on the shared public Mindfulness coach, replacing Jessica (`cgSgspJ2msm6clMCkdW9`). Provider read-back confirms only `tts.voice_id` changed, with the challenge workflow and all other TTS settings unchanged. Expressive mode remains off, no additional voices are configured, and client overrides for voice/model/supported voices remain disabled. The active override-agent workflow node inherits the root voice; challenge days cannot hand off to separate agents.
+
+Do not copy the similarly named **MINDFULNESS COACH — SHRIA VERSION**: its prompt explicitly describes a private coach *for* Shria, intentionally using a different male voice. It is not the public Shria voice.
+
+The voice change is provider-side and applies to fresh sessions on both the Webflow page and the app without a frontend deployment. Existing calls need to end and restart to receive the published voice. Auditory recognition against the user's remembered voice remains a human acceptance check; the saved name and configuration do not prove historical identity.
+
+
+Restoration validation: four real provider spoken responses on Day 3 (greeting, body scan, continuation and closing) produced 9.76, 88.64, 44.16 and 36.00 seconds of PCM audio. Synthetic text input and a silent input-audio clock were used; this was not a human microphone test. The saved test conversation has four agent responses on the same agent, workflow node and published version, with no tool calls or handoffs. Its closing correctly says “Day three” and “Body Scan.” The checker initially assumed a numeric day spelling; revalidation of the retained transcript accepts the equivalent spoken spelling. Audio samples and provider receipts are retained under ignored `.local/voice-audit/restored-audio`.
+
+Repeat the read-only provider consistency check from the repo root:
+`em-backend/venv/Scripts/python.exe scripts/verify_shria_voice.py`
+It detects a changed primary voice, additional voices, enabled client voice overrides, workflow voice overrides, or a missing/mislabelled challenge handoff expression. It does not infer audible speaker identity.
