@@ -1,4 +1,4 @@
-"""Read-only provider check for the published Shria voice and challenge isolation.
+"""Read-only check for voice isolation. Current named candidate was rejected by the user.
 
 Run with em-backend's Python environment. No signed URLs or credentials are printed.
 """
@@ -11,7 +11,7 @@ from elevenlabs.client import ElevenLabs
 
 from challenge_workflow import protect_workflow
 
-SHRIA_VOICE_ID = "DoEstgRs2aKZVhKhJhnx"
+CANDIDATE_VOICE_ID = "DoEstgRs2aKZVhKhJhnx"
 
 
 def verify(agent):
@@ -20,7 +20,7 @@ def verify(agent):
             raise RuntimeError(message)
 
     tts = agent["conversation_config"]["tts"]
-    require(tts["voice_id"] == SHRIA_VOICE_ID, "Published voice no longer matches saved Shria")
+    require(tts["voice_id"] == CANDIDATE_VOICE_ID, "Published voice differs from the rejected candidate; re-establish the approved baseline")
     require(not tts.get("supported_voices"), "Additional voices could allow voice switching")
     overrides = agent["platform_settings"]["overrides"]["conversation_config_override"]["tts"]
     require(not any(overrides.get(k) for k in ("voice_id", "model_id", "supported_voices")),
@@ -30,7 +30,7 @@ def verify(agent):
     for node in workflow.get("nodes", {}).values():
         if node["type"] == "override_agent":
             voice = ((node.get("conversation_config") or {}).get("tts") or {}).get("voice_id")
-            require(voice in (None, SHRIA_VOICE_ID), "A workflow node overrides Shria's voice")
+            require(voice in (None, CANDIDATE_VOICE_ID), "A workflow node overrides Shria's voice")
     for edge_id, edge in workflow.get("edges", {}).items():
         target = workflow["nodes"][edge["target"]]
         if target["type"] not in {"standalone_agent", "phone_number"}:
@@ -47,8 +47,9 @@ def verify(agent):
                 and len(children) == 2 and children[0] == outside,
                 "An alternate-agent/phone handoff lacks the days 1–7 guard")
         guarded_edges += 1
-    return {"passed": True, "voice": "Shria", "voice_id": SHRIA_VOICE_ID,
-            "guarded_handoffs": guarded_edges, "human_audio_approval": "not inferred"}
+    return {"passed": False, "configuration_checks_passed": True,
+            "voice": "Saved voice labelled Shria (rejected by user)", "voice_id": CANDIDATE_VOICE_ID,
+            "guarded_handoffs": guarded_edges, "human_audio_approval": "rejected; correct voice still unresolved"}
 
 
 if __name__ == "__main__":
@@ -56,4 +57,6 @@ if __name__ == "__main__":
     client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"], timeout=25)
     agent_id = os.environ.get("AGENT_ID") or os.environ["ELEVENLABS_AGENT_ID"]
     agent = client.conversational_ai.agents.get(agent_id).model_dump(mode="json")
-    print(json.dumps(verify(agent)))
+    result = verify(agent)
+    print(json.dumps(result))
+    raise SystemExit(0 if result["passed"] else 1)

@@ -58,3 +58,12 @@ Restoration validation: four real provider spoken responses on Day 3 (greeting, 
 Repeat the read-only provider consistency check from the repo root:
 `em-backend/venv/Scripts/python.exe scripts/verify_shria_voice.py`
 It detects a changed primary voice, additional voices, enabled client voice overrides, workflow voice overrides, or a missing/mislabelled challenge handoff expression. It does not infer audible speaker identity.
+
+
+## User rejected the named voice — 2026-11-10
+
+The user listened to the generated sample and said: **“That does not sound like Shreya.”** This supersedes any voice-restoration/identity acceptance implied above. The named saved voice is **not approved**. Configuration continuity and successful audio generation do not establish the correct voice.
+
+Read all three earlier published configurations available in this shared agent's branch history (versions 1–3): all use Jessica (`cgSgspJ2msm6clMCkdW9`) with `eleven_v3_conversational`. No different historical Shreya voice was recovered from those versions. Requested a known-correct recording/page/voice reference from the user. No further provider voice change was made after rejection; the rejected named candidate remains published pending a verified replacement. Challenge handoff protection remains intact.
+
+`verify_shria_voice.py` now explicitly reports failed overall acceptance and a nonzero exit code even if its configuration checks pass, because the user rejected the current voice. Do not restore a green voice-identity verdict based only on voice name, ID, waveform generation or agent/version continuity.
