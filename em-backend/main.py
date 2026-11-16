@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response, WebSocket
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import speech_relay
 
@@ -115,15 +115,23 @@ async def voice_session(websocket: WebSocket):
     if not ticket:
         await websocket.close(code=1008)
         return
-    await websocket.accept()
+    offered = websocket.headers.get('sec-websocket-protocol', '').split(',')
+    protocol = 'convai' if 'convai' in {p.strip() for p in offered} else None
+    await websocket.accept(subprotocol=protocol)
+    close_code = 1000
     try:
         await speech_relay.relay(websocket, ticket.upstream, ticket.day, origin)
+    except WebSocketDisconnect:
+        pass
     except Exception as exc:
+        close_code = 1011
         # No exception messages: HTTP errors can include credentials or signed URLs.
-        logger.error('voice relay failed type=%s', type(exc).__name__)
+        logger.error('voice relay failed type=%s upstream_close_code=%s sent_close_code=%s',
+            type(exc).__name__, getattr(getattr(exc, 'rcvd', None), 'code', None),
+            getattr(getattr(exc, 'sent', None), 'code', None))
     finally:
         try:
-            await websocket.close(code=1011)
+            await websocket.close(code=close_code)
         except RuntimeError:
             pass
 

@@ -14,6 +14,19 @@ import speech_relay as relay
 
 
 class TicketTests(unittest.TestCase):
+    def test_browser_sdk_subprotocol_is_negotiated(self):
+        store = relay.Tickets()
+        key = store.issue('wss://provider', 'http://localhost:3000', 3, 'one')
+        async def fake_relay(browser, *args):
+            await browser.send_json({'ready': True})
+        with patch.dict(os.environ, {'VOICE_PLAYBACK_MODE': 'flash25'}), \
+             patch.object(relay, 'tickets', store), patch.object(relay, 'relay', fake_relay):
+            client = TestClient(main.app)
+            with client.websocket_connect('/convai/session?ticket=' + key,
+                    headers={'Origin': 'http://localhost:3000'}, subprotocols=['convai']) as socket:
+                self.assertEqual(socket.accepted_subprotocol, 'convai')
+                self.assertTrue(socket.receive_json()['ready'])
+
     def test_origin_bound_expiring_single_use_tickets(self):
         store = relay.Tickets()
         with patch.object(relay.time, 'monotonic', return_value=100):

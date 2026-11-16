@@ -120,7 +120,7 @@ async def relay(browser, upstream_url, day, origin):
             finally:
                 current_speech = None
 
-    async with websockets.connect(upstream_url, origin=origin, max_size=131072) as upstream:
+    async with websockets.connect(upstream_url, origin=origin, max_size=8 * 1024 * 1024) as upstream:
         async def listen():
             initial = True
             while True:
