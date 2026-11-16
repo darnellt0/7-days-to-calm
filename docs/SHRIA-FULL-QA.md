@@ -67,3 +67,16 @@ The user listened to the generated sample and said: **“That does not sound like 
 Read all three earlier published configurations available in this shared agent's branch history (versions 1–3): all use Jessica (`cgSgspJ2msm6clMCkdW9`) with `eleven_v3_conversational`. No different historical Shreya voice was recovered from those versions. Requested a known-correct recording/page/voice reference from the user. No further provider voice change was made after rejection; the rejected named candidate remains published pending a verified replacement. Challenge handoff protection remains intact.
 
 `verify_shria_voice.py` now explicitly reports failed overall acceptance and a nonzero exit code even if its configuration checks pass, because the user rejected the current voice. Do not restore a green voice-identity verdict based only on voice name, ID, waveform generation or agent/version continuity.
+
+
+## Flash family and Spanish secondary — 2026-11-15
+
+User selected **Flash v2.5; add Spanish as a secondary language**. Published the supported native routing with the same saved Shria voice (`DoEstgRs2aKZVhKhJhnx`): English default uses `eleven_flash_v2`; Spanish preset uses `eleven_flash_v2_5`. Both use speed 0.94, stability 0.30 and similarity 0.85, inferred from the supplied sample filename (`sp94_s30_sb85_f2-5`); the file metadata contains only an encoder tag, not independently verified generation settings.
+
+Correction to the earlier explanation: an additional language does **not** enable v2.5 for English. The provider rejected a v2.5 root English configuration even with Spanish present. ElevenLabs' language documentation explicitly states that English always uses v2. Native English Flash v2.5 is therefore **not achieved** by this change. Do not claim an exact model/reference match. Source: https://elevenlabs.io/docs/eleven-agents/customization/voice/customization/language .
+
+Read-back verifies English remains default; the Spanish preset has the same voice/settings; challenge prompt, workflow and platform/security settings are unchanged. Voice overrides remain locked and challenge handoffs guarded. This provider-side configuration applies to fresh sessions without a frontend build.
+
+Validation: actual deployed signing + provider ASR/TTS produced four English spoken responses, including Day three / Body Scan closing, using locally synthesized Windows SAPI speech input (not the user's microphone). A separate Spanish-preset call produced the translated Spanish greeting in real audio. Conversation read-back verifies one agent/version/workflow node per call, without handoffs or tool calls. The text-injected follow-up harness initially failed on Flash; the spoken-input rerun passed. Backend suite remains 10/10 passing. No new physical-device or subjective voice-identity approval is claimed.
+
+The read-only verifier now checks the selected per-language Flash models and all three voice parameters in addition to voice ID and handoff protection. A passing result is configuration validation only; the new Flash sample still needs the user's listening acceptance against the reference. Prior V3 sample rejection remains historical evidence, not approval of this new rendering. Synthetic audio and provider receipts are retained in ignored `.local/voice-audit/flash25`.
