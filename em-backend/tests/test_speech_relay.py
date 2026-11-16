@@ -168,3 +168,6 @@ class RelayTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(cancelled.is_set())
         self.assertEqual(calls, ['old', 'new'])
         self.assertEqual([e['type'] for e in sent], ['agent_response', 'interruption', 'agent_response', 'audio'])
+        # Native timing/IDs cannot cause the SDK to discard the new response.
+        self.assertEqual(sent[1]['interruption_event']['event_id'], 1)
+        self.assertEqual(sent[-1]['audio_event']['event_id'], 2)

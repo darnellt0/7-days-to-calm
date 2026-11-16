@@ -80,7 +80,7 @@ async def synthesize(text, previous=""):
 async def relay(browser, upstream_url, day, origin):
     send_lock = asyncio.Lock()
     current_speech = None
-    last_audio_id = 0
+    playback_id = 0
     previous_text = ""
     pending = asyncio.Queue(maxsize=4)
 
@@ -141,23 +141,26 @@ async def relay(browser, upstream_url, day, origin):
                 await upstream.send(json.dumps(event))
 
         async def receive():
-            nonlocal last_audio_id
+            nonlocal playback_id
             async for raw in upstream:
                 event = json.loads(raw)
                 kind = event.get("type")
                 if kind == "audio":
-                    last_audio_id = event["audio_event"]["event_id"]
                     continue
                 if kind == "conversation_initiation_metadata":
                     event["conversation_initiation_metadata_event"]["agent_output_audio_format"] = "pcm_16000"
                 if kind == "interruption":
                     await cancel_speech()
+                    # Our audio can arrive at different times from discarded native audio.
+                    # Use our sequence so the SDK drops old audio, never the next reply.
+                    event["interruption_event"]["event_id"] = playback_id
                 await send(event)
                 if kind == "agent_response":
                     text = event["agent_response_event"]["agent_response"]
                     if not isinstance(text, str) or len(text) > 12000:
                         raise ValueError("Invalid agent response")
-                    pending.put_nowait((text, last_audio_id))
+                    playback_id += 1
+                    pending.put_nowait((text, playback_id))
 
         tasks = [asyncio.create_task(fn()) for fn in (listen, receive, playback)]
         try:
