@@ -1,5 +1,7 @@
 # 7 Days to Calm
 
+The optional [English Flash v2.5 relay](docs/ENGLISH-FLASH25-RELAY.md) is prepared but disabled pending live TTS access and audio verification. Native playback remains the default.
+
 Inline Shria voice sessions with browser-local challenge progress. Production uses `em-frontend` (Next.js 15, React 18) and `em-backend` (FastAPI). The optional `shria-agent-stub` Express demo forwards signing to FastAPI; it never issues fake tokens.
 
 ## Run locally

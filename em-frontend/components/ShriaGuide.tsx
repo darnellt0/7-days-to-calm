@@ -113,7 +113,14 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
         throw new Error(`Shria is unavailable (${response.status}). Please try again.${reference ? ` Reference: ${reference}` : ""}`);
       }
       const data = await response.json();
-      if (typeof data.signed_url !== "string" || !data.signed_url.startsWith("wss://")) {
+      let connectionUrl = data.signed_url;
+      if (typeof data.relay_path === "string" && /^\/convai\/session\?ticket=[A-Za-z0-9_-]+$/.test(data.relay_path)) {
+        const relay = new URL(data.relay_path, base);
+        relay.protocol = relay.protocol === "https:" ? "wss:" : "ws:";
+        connectionUrl = relay.href;
+      }
+      const localRelay = typeof connectionUrl === "string" && /^ws:\/\/(localhost|127\.0\.0\.1):\d+\/convai\/session\?/.test(connectionUrl);
+      if (typeof connectionUrl !== "string" || (!connectionUrl.startsWith("wss://") && !localRelay)) {
         throw new Error("The voice service returned an invalid connection. Please try again.");
       }
       if (!current()) return;
@@ -121,7 +128,7 @@ export default function ShriaGuide({ day, title, onActiveChange, onPracticeEnd, 
       const { Conversation } = await import("@elevenlabs/client");
       if (!current()) return;
       const pending = Conversation.startSession({
-        signedUrl: data.signed_url,
+        signedUrl: connectionUrl,
         connectionType: "websocket",
         dynamicVariables: {
           challenge_day: day,

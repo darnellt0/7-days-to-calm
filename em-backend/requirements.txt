@@ -2,3 +2,5 @@ fastapi==0.115.2
 uvicorn[standard]==0.30.6
 elevenlabs==2.16.0
 python-dotenv==1.0.0
+httpx==0.28.1
+websockets==15.0.1

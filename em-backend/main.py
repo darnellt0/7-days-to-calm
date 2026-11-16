@@ -11,8 +11,9 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from elevenlabs.client import ElevenLabs
-from fastapi import FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi import FastAPI, Header, HTTPException, Query, Request, Response, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+import speech_relay
 
 load_dotenv(Path(__file__).with_name('.env'))
 logging.basicConfig(level=logging.INFO)
@@ -89,8 +90,42 @@ def get_signed_url(response: Response, request: Request, challenge_day: Day = 1)
                      request_id, challenge_day, type(exc).__name__, getattr(exc, 'status_code', None), location)
         raise HTTPException(502, detail='Voice provider unavailable. Please try again.', headers=headers) from None
     response.headers.update(headers)
+    if speech_relay.enabled():
+        if not origin:
+            raise HTTPException(403, detail='Browser origin required for voice relay', headers=headers)
+        try:
+            ticket = speech_relay.tickets.issue(signed_url, origin, challenge_day,
+                request.client.host if request.client else 'unknown')
+        except ValueError:
+            raise HTTPException(429, detail='Too many practice starts. Please wait a minute.', headers=headers) from None
+        # Frontend resolves this path against its configured backend URL.
+        return {'relay_path': f'/convai/session?ticket={ticket}', 'challenge_day': challenge_day,
+                'playback_model': speech_relay.MODEL}
     logger.info('signed URL issued request_id=%s day=%s', request_id, challenge_day)
     return {'signed_url': signed_url, 'challenge_day': challenge_day}
+
+
+@app.websocket('/convai/session')
+async def voice_session(websocket: WebSocket):
+    origin = websocket.headers.get('origin', '')
+    if not speech_relay.enabled() or origin not in ALLOW_ORIGINS:
+        await websocket.close(code=1008)
+        return
+    ticket = speech_relay.tickets.take(websocket.query_params.get('ticket', ''), origin)
+    if not ticket:
+        await websocket.close(code=1008)
+        return
+    await websocket.accept()
+    try:
+        await speech_relay.relay(websocket, ticket.upstream, ticket.day, origin)
+    except Exception as exc:
+        # No exception messages: HTTP errors can include credentials or signed URLs.
+        logger.error('voice relay failed type=%s', type(exc).__name__)
+    finally:
+        try:
+            await websocket.close(code=1011)
+        except RuntimeError:
+            pass
 
 @app.post('/tool/log-goal')
 def log_goal(day: Day, completed: bool = True, authorization: Optional[str] = Header(None)):
