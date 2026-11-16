@@ -67,7 +67,8 @@ def verify(agent):
     return {"passed": True, "configuration_checks_passed": True,
             "voice": "Shria", "voice_id": CANDIDATE_VOICE_ID,
             "english_model": "eleven_flash_v2", "spanish_model": "eleven_flash_v2_5",
-            "english_flash_v2_5_available": False,
+            "native_english_flash_v2_5_available": False,
+            "application_playback": "Check backend relay mode separately; it can synthesize English Flash v2.5",
             "guarded_handoffs": guarded_edges, "human_audio_approval": "pending for Flash setup; prior V3 sample rejected"}
 
 
