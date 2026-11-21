@@ -59,3 +59,11 @@ Render's Docker command uses one Uvicorn worker; the free service is one instanc
 Final production browser runs passed on desktop and mobile-touch emulation: real synthetic speech recognition, Flash v2.5 audio playback, correct day, mute/end, released microphone tracks and saved Day 4 after reload. No page errors. The upstream agent remains native Flash v2; audio played by the app is explicitly standalone English Flash v2.5. The old direct Webflow embed is not routed through this app relay.
 
 Subjective similarity to the supplied sample still needs the user's ear-check. Actual generated audio, screenshots and QA receipts are under ignored .local/voice-audit/english25. No customer recordings were inspected. Rollback remains VOICE_PLAYBACK_MODE=native plus restart.
+
+## Turbo release checks - 2026-11-20
+
+Commit d6d7ebf deployed through GitHub. Production health/signing returned 200 and signing advertised eleven_turbo_v2_5. All 20 backend regressions passed, including fixed model/settings for greeting and later turns, session continuity history, exclusion of interrupted streams, original-audio suppression and failure without another-voice fallback.
+
+Actual standalone Turbo synthesis accepted the opening and two subsequent utterances with completed-request continuity. Production desktop and mobile-touch emulation each passed real SDK/provider ASR/TTS with two distinct spoken responses, day context, mute/end, microphone release and saved progress after reload. Actual spoken interruption cancelled the old response and resumed with a newer playable response. These tests use synthetic speech, not physical-phone or human auditory sign-off. The separate ad-hoc long-practice fixture did not pass its closing assertion after an ellipsis reply; it is not counted as full-practice validation.
+
+The user's preference for Turbo is recorded in Turing's project feedback. Full-practice perceived voice continuity remains subject to the user's listening check. Evidence is stored under ignored .local/voice-audit/english25/turbo-*.
