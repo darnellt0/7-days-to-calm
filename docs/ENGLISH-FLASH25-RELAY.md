@@ -1,4 +1,13 @@
-# English Flash v2.5 speech relay
+# English Turbo v2.5 speech relay
+
+## Current selection - 2026-11-20
+
+The user compared continuous Turbo and Flash v2.5 recordings and selected Turbo as closer to Shria. All relay speech, including the opening greeting, now explicitly requests eleven_turbo_v2_5 with the same saved Shria voice, English, speed .94, stability .30 and similarity .85. Native audio remains discarded and synthesis errors never fall back to another model or voice.
+
+Set VOICE_PLAYBACK_MODE=turbo25. The existing flash25 activation value remains accepted for deployment compatibility but now also selects Turbo. Native provider agent configuration remains separate and unchanged. Completed TTS request IDs are retained only within a session (last three) to condition the next reply; interrupted generations are excluded. If a provider omits the ID, prior text remains the continuity fallback. See [request stitching](https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/request-stitching). This reduces turn-to-turn variation; it cannot guarantee perceptually identical delivery. Human acceptance of the complete live practice remains separate from automated configuration checks.
+
+The historical Flash activation record below describes the previous deployment.
+
 
 Status: **enabled in production** after explicit approval added Text-to-Speech access to the existing key. Other key scopes were retained. Direct synthesis, local relay, and production desktop/mobile-touch tests passed. The private workflow-override probe was rejected with 422; no QA agent was created.
 

@@ -1,4 +1,4 @@
-"""Opt-in speech relay: provider ASR/agent, explicit English Flash v2.5 playback.
+"""Opt-in speech relay: provider ASR/agent, explicit English Turbo v2.5 playback.
 
 Single worker required: short-lived, one-use tickets never expose provider URLs.
 Native agent audio is discarded, never used as a fallback.
@@ -17,7 +17,7 @@ import httpx
 import websockets
 
 VOICE = "DoEstgRs2aKZVhKhJhnx"
-MODEL = "eleven_flash_v2_5"
+MODEL = "eleven_turbo_v2_5"
 SETTINGS = {"speed": 0.94, "stability": 0.30, "similarity_boost": 0.85}
 
 
@@ -59,10 +59,12 @@ tickets = Tickets()
 
 
 def enabled():
-    return os.getenv("VOICE_PLAYBACK_MODE", "native") == "flash25"
+    # flash25 is retained as an activation alias for existing deployments.
+    # Both relay modes now use the user-selected Turbo model; never Flash fallback.
+    return os.getenv("VOICE_PLAYBACK_MODE", "native") in {"turbo25", "flash25"}
 
 
-async def synthesize(text, previous=""):
+async def synthesize(text, previous="", request_ids=None):
     """Only called with upstream agent replies; no public arbitrary-text TTS route."""
     async with httpx.AsyncClient(timeout=httpx.Timeout(30, connect=10)) as client:
         async with client.stream(
@@ -70,11 +72,19 @@ async def synthesize(text, previous=""):
             headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
             params={"output_format": "pcm_16000"},
             json={"model_id": MODEL, "language_code": "en", "text": text,
-                  "voice_settings": SETTINGS, "previous_text": previous[-1000:] or None},
+                  "voice_settings": SETTINGS,
+                  "previous_request_ids": list(request_ids or [])[-3:] or None,
+                  "previous_text": None if request_ids else previous[-1000:] or None},
         ) as response:
             response.raise_for_status()
             async for chunk in response.aiter_bytes(6400):
                 yield chunk
+            # Only fully consumed generations can condition later turns. Interrupted
+            # streams never enter this session-local history.
+            request_id = response.headers.get("request-id")
+            if request_ids is not None and request_id:
+                request_ids.append(request_id)
+                del request_ids[:-3]
 
 
 async def relay(browser, upstream_url, day, origin):
@@ -82,6 +92,7 @@ async def relay(browser, upstream_url, day, origin):
     current_speech = None
     playback_id = 0
     previous_text = ""
+    request_ids = []
     pending = asyncio.Queue(maxsize=4)
 
     async def send(event):
@@ -102,7 +113,7 @@ async def relay(browser, upstream_url, day, origin):
 
     async def speak(text, event_id):
         nonlocal previous_text
-        async for chunk in synthesize(text, previous_text):
+        async for chunk in synthesize(text, previous_text, request_ids):
             await send({"type": "audio", "audio_event": {
                 "audio_base_64": base64.b64encode(chunk).decode(), "event_id": event_id}})
         previous_text = text

@@ -54,7 +54,7 @@ class TicketTests(unittest.TestCase):
             client = TestClient(main.app)
             response = client.get('/convai/signed-url?challenge_day=3', headers={'Origin': 'http://localhost:3000'})
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json()['playback_model'], 'eleven_flash_v2_5')
+            self.assertEqual(response.json()['playback_model'], 'eleven_turbo_v2_5')
             self.assertNotIn('upstream', response.text)
             self.assertNotIn('signed_url', response.json())
             self.assertEqual(client.get('/convai/signed-url').status_code, 403)
@@ -64,7 +64,7 @@ class TicketTests(unittest.TestCase):
 
 
 class RelayTests(unittest.IsolatedAsyncioTestCase):
-    async def test_synthesis_explicitly_requests_english_flash25_and_fixed_voice(self):
+    async def test_synthesis_explicitly_requests_english_turbo25_and_fixed_voice(self):
         seen = []
         def respond(request):
             seen.append(request)
@@ -76,11 +76,46 @@ class RelayTests(unittest.IsolatedAsyncioTestCase):
             result = b''.join([chunk async for chunk in relay.synthesize('A gentle breath.', 'Earlier cue.')])
         self.assertEqual(result, b'pcm-data')
         body = json.loads(seen[0].content)
-        self.assertEqual(body['model_id'], 'eleven_flash_v2_5')
+        self.assertEqual(body['model_id'], 'eleven_turbo_v2_5')
         self.assertEqual(body['language_code'], 'en')
         self.assertEqual(body['voice_settings'], relay.SETTINGS)
         self.assertEqual(body['previous_text'], 'Earlier cue.')
         self.assertEqual(seen[0].url.params['output_format'], 'pcm_16000')
+
+    async def test_completed_responses_condition_next_turn_with_same_voice_and_model(self):
+        seen = []
+        def respond(request):
+            seen.append(request)
+            return httpx.Response(200, content=b'pcm', headers={'request-id': f'turn-{len(seen)}'})
+        original = httpx.AsyncClient
+        history = []
+        with patch.object(relay.httpx, 'AsyncClient', side_effect=lambda **kw: original(transport=httpx.MockTransport(respond), **kw)), \
+             patch.dict(os.environ, {'ELEVENLABS_API_KEY': 'private'}):
+            for text in ['Welcome. I am Shria.', 'Let your shoulders soften.', 'Breathe gently.', 'Rest.', 'Close.']:
+                self.assertEqual(b''.join([chunk async for chunk in relay.synthesize(text, 'prior text', history)]), b'pcm')
+        bodies = [json.loads(request.content) for request in seen]
+        self.assertIsNone(bodies[0]['previous_request_ids'])
+        self.assertEqual(bodies[1]['previous_request_ids'], ['turn-1'])
+        self.assertIsNone(bodies[1]['previous_text'])
+        self.assertEqual(bodies[4]['previous_request_ids'], ['turn-2', 'turn-3', 'turn-4'])
+        self.assertEqual(history, ['turn-3', 'turn-4', 'turn-5'])
+        for request, body in zip(seen, bodies):
+            self.assertIn(relay.VOICE, str(request.url))
+            self.assertEqual(body['model_id'], 'eleven_turbo_v2_5')
+            self.assertEqual(body['voice_settings'], relay.SETTINGS)
+            self.assertEqual(body['language_code'], 'en')
+
+    async def test_interrupted_generation_never_enters_continuity_history(self):
+        original = httpx.AsyncClient
+        history = ['completed-turn']
+        transport = httpx.MockTransport(lambda request: httpx.Response(
+            200, content=b'pcm' * 5000, headers={'request-id': 'interrupted-turn'}))
+        with patch.object(relay.httpx, 'AsyncClient', side_effect=lambda **kw: original(transport=transport, **kw)), \
+             patch.dict(os.environ, {'ELEVENLABS_API_KEY': 'private'}):
+            stream = relay.synthesize('A long practice.', '', history)
+            await anext(stream)
+            await stream.aclose()
+        self.assertEqual(history, ['completed-turn'])
 
     async def exercise(self, fail=False):
         closed = asyncio.Event()
@@ -116,11 +151,11 @@ class RelayTests(unittest.IsolatedAsyncioTestCase):
                 yield json.dumps({'type': 'agent_response', 'agent_response_event': {'agent_response': 'Day three. Breathe gently.'}})
                 await closed.wait()
 
-        async def synth(text, previous):
+        async def synth(text, previous, request_ids):
             spoken.append(text)
             if fail:
                 raise RuntimeError('private-provider-error')
-            yield b'FLASH25'
+            yield b'TURBO25'
 
         with patch.object(relay.websockets, 'connect', return_value=Upstream()), patch.object(relay, 'synthesize', synth):
             if fail:
@@ -134,7 +169,7 @@ class RelayTests(unittest.IsolatedAsyncioTestCase):
         audio = [x['audio_event']['audio_base_64'] for x in sent if x['type'] == 'audio']
         self.assertNotIn('NATIVE', audio)
         if not fail:
-            self.assertEqual(base64.b64decode(audio[0]), b'FLASH25')
+            self.assertEqual(base64.b64decode(audio[0]), b'TURBO25')
             self.assertEqual(sent[0]['conversation_initiation_metadata_event']['agent_output_audio_format'], 'pcm_16000')
 
     async def test_provider_audio_replaced_and_context_preserved(self):
@@ -169,7 +204,7 @@ class RelayTests(unittest.IsolatedAsyncioTestCase):
                 await cancelled.wait()
                 yield json.dumps({'type': 'agent_response', 'agent_response_event': {'agent_response': 'new'}})
                 await finished.wait()
-        async def synth(text, previous):
+        async def synth(text, previous, request_ids):
             calls.append(text)
             if text == 'old':
                 started.set()

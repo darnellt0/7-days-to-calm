@@ -68,8 +68,8 @@ def verify(agent):
             "voice": "Shria", "voice_id": CANDIDATE_VOICE_ID,
             "english_model": "eleven_flash_v2", "spanish_model": "eleven_flash_v2_5",
             "native_english_flash_v2_5_available": False,
-            "application_playback": "Check backend relay mode separately; it can synthesize English Flash v2.5",
-            "guarded_handoffs": guarded_edges, "human_audio_approval": "pending for Flash setup; prior V3 sample rejected"}
+            "application_playback": "Check backend relay mode separately; it synthesizes English Turbo v2.5 when enabled",
+            "guarded_handoffs": guarded_edges, "human_audio_approval": "Turbo v2.5 comparison preferred by user; complete practice continuity pending"}
 
 
 if __name__ == "__main__":

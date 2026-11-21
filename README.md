@@ -1,6 +1,6 @@
 # 7 Days to Calm
 
-Production uses the [English Flash v2.5 relay](docs/ENGLISH-FLASH25-RELAY.md) for Shria playback. New installations default to native playback until VOICE_PLAYBACK_MODE=flash25 is configured with Text-to-Speech access and one backend worker/instance.
+The Shria practice uses the [English Turbo v2.5 relay](docs/ENGLISH-FLASH25-RELAY.md), selected by the user in a direct voice comparison. New installations default to native playback until VOICE_PLAYBACK_MODE=turbo25 is configured with Text-to-Speech access and one backend worker/instance. The legacy flash25 activation value also selects Turbo; it does not change the playback model.
 
 Inline Shria voice sessions with browser-local challenge progress. Production uses `em-frontend` (Next.js 15, React 18) and `em-backend` (FastAPI). The optional `shria-agent-stub` Express demo forwards signing to FastAPI; it never issues fake tokens.
 
